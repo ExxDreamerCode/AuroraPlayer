@@ -20,6 +20,13 @@ const FAVORITES_KEY = "aurora-player-favorites";
 const HISTORY_KEY = "aurora-player-history";
 const MAX_HISTORY = 20;
 
+function formatTime(sec: number): string {
+  if (!isFinite(sec) || sec < 0) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 function App() {
   const [input, setInput] = useState("");
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
@@ -33,9 +40,18 @@ function App() {
   const [history, setHistory] = useState<Channel[]>([]);
   const [search, setSearch] = useState("");
   const [showFavorites, setShowFavorites] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [muted, setMuted] = useState(false);
+  const [buffering, setBuffering] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -91,13 +107,108 @@ function App() {
       v.removeAttribute("src");
       v.load();
     }
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setBuffering(false);
+    setError(null);
   }, []);
+
+  const togglePlay = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  }, []);
+
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setVolume(val);
+    const v = videoRef.current;
+    if (v) {
+      v.volume = val;
+      if (val === 0) {
+        v.muted = true;
+        setMuted(true);
+      } else {
+        v.muted = muted;
+      }
+    }
+  }, [muted]);
+
+  const toggleMute = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setMuted(v.muted);
+  }, []);
+
+  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const v = videoRef.current;
+    if (!v || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = (e.clientX - rect.left) / rect.width;
+    v.currentTime = frac * duration;
+  }, [duration]);
+
+  const handleFullscreen = useCallback(() => {
+    const el = document.querySelector(".player-area");
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      el.requestFullscreen();
+    }
+  }, []);
+
+  const handleTimeUpdate = useCallback(() => {
+    const v = videoRef.current;
+    if (v) {
+      setCurrentTime(v.currentTime);
+      setDuration(v.duration || 0);
+    }
+  }, []);
+
+  const handleVideoPlay = useCallback(() => {
+    setPlaying(true);
+    setError(null);
+  }, []);
+
+  const handleVideoPause = useCallback(() => {
+    setPlaying(false);
+  }, []);
+
+  const handleWaiting = useCallback(() => {
+    setBuffering(true);
+  }, []);
+
+  const handleCanPlay = useCallback(() => {
+    setBuffering(false);
+  }, []);
+
+  const handleVideoError = useCallback(() => {
+    setError("Ошибка воспроизведения");
+    setPlaying(false);
+    setBuffering(false);
+  }, []);
+
+  const showControlsTemporarily = useCallback(() => {
+    setShowControls(true);
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    controlsTimer.current = setTimeout(() => {
+      if (playing) setShowControls(false);
+    }, 3000);
+  }, [playing]);
 
   const playChannel = useCallback(
     (channel: Channel) => {
       stopPlayback();
       setCurrentChannel(channel);
       addToHistory(channel);
+      setShowControls(true);
 
       const v = videoRef.current;
       if (!v) return;
@@ -108,19 +219,30 @@ function App() {
       if (Hls.isSupported() && isHls) {
         const hls = new Hls({
           enableWorker: true,
-          lowLatencyMode: true,
-          manifestLoadingTimeOut: 5000,
-          manifestLoadingMaxRetry: 1,
-          levelLoadingTimeOut: 5000,
-          fragLoadingTimeOut: 5000,
+          lowLatencyMode: false,
+          backBufferLength: 30,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          manifestLoadingTimeOut: 20000,
+          manifestLoadingMaxRetry: 5,
+          manifestLoadingMaxRetryTimeout: 10000,
+          levelLoadingTimeOut: 20000,
+          levelLoadingMaxRetry: 5,
+          levelLoadingMaxRetryTimeout: 10000,
+          fragLoadingTimeOut: 20000,
+          fragLoadingMaxRetry: 5,
+          fragLoadingMaxRetryTimeout: 10000,
+          startLevel: -1,
         });
 
         let fallbackTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
-          hls.destroy();
-          hlsRef.current = null;
+          if (hlsRef.current) {
+            try { hlsRef.current.destroy(); } catch {}
+            hlsRef.current = null;
+          }
           v.src = channel.url;
           v.play().catch(() => {});
-        }, 10000);
+        }, 25000);
 
         hlsRef.current = hls;
         hls.loadSource(channel.url);
@@ -135,7 +257,7 @@ function App() {
         hls.on(Hls.Events.ERROR, (_e, d) => {
           if (d.fatal) {
             if (fallbackTimer) clearTimeout(fallbackTimer);
-            hls.destroy();
+            try { hls.destroy(); } catch {}
             hlsRef.current = null;
             v.src = channel.url;
             v.play().catch(() => {});
@@ -354,13 +476,26 @@ function App() {
         )}
       </aside>
 
-      <main className="player-area">
+      <main
+        className="player-area"
+        onMouseMove={showControlsTemporarily}
+        onClick={showControlsTemporarily}
+      >
         {currentChannel ? (
           <>
-            <div className="player-topbar">
-              <div>
-                <div className="playing-label">Сейчас</div>
-                <div className="playing-name">{currentChannel.name}</div>
+            <div className="player-topbar" style={{ opacity: showControls || !playing ? 1 : 0 }}>
+              <div className="channel-info-bar">
+                <div className="channel-logo">
+                  {currentChannel.logo ? (
+                    <img src={currentChannel.logo} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  ) : (
+                    <div className="channel-placeholder">{currentChannel.name.charAt(0).toUpperCase()}</div>
+                  )}
+                </div>
+                <div className="channel-meta">
+                  <div className="playing-label">Сейчас</div>
+                  <div className="playing-name">{currentChannel.name}</div>
+                </div>
               </div>
               <button
                 className={`player-fav ${isFavorite(currentChannel.url) ? "active" : ""}`}
@@ -369,14 +504,71 @@ function App() {
                 {isFavorite(currentChannel.url) ? "★" : "☆"}
               </button>
             </div>
+
             <div className="video-wrapper">
               <video
                 ref={videoRef}
-                controls
                 autoPlay
                 className="video-element"
-                onError={() => setError("Ошибка воспроизведения")}
+                onTimeUpdate={handleTimeUpdate}
+                onPlay={handleVideoPlay}
+                onPause={handleVideoPause}
+                onWaiting={handleWaiting}
+                onCanPlay={handleCanPlay}
+                onError={handleVideoError}
+                onDurationChange={handleTimeUpdate}
+                onClick={togglePlay}
               />
+
+              {buffering && (
+                <div className="buffering-indicator">
+                  <div className="buffering-spinner" />
+                </div>
+              )}
+
+              {error && (
+                <div className="player-error">{error}</div>
+              )}
+            </div>
+
+            <div className={`player-controls ${showControls || !playing ? "visible" : ""}`}>
+              <div className="progress-wrap" ref={progressRef} onClick={handleProgressClick}>
+                <div className="progress-track">
+                  <div
+                    className="progress-fill"
+                    style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
+                  />
+                </div>
+              </div>
+
+              <div className="controls-row">
+                <button className="ctrl-btn play-btn" onClick={togglePlay}>
+                  {playing ? "⏸" : "▶"}
+                </button>
+
+                <div className="volume-group">
+                  <button className="ctrl-btn" onClick={toggleMute}>
+                    {muted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={muted ? 0 : volume}
+                    onChange={handleVolumeChange}
+                    className="volume-slider"
+                  />
+                </div>
+
+                <span className="time-display">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </span>
+
+                <button className="ctrl-btn fs-btn" onClick={handleFullscreen}>
+                  ⛶
+                </button>
+              </div>
             </div>
           </>
         ) : (
