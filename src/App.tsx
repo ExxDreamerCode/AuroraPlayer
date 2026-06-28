@@ -181,18 +181,49 @@ function App() {
     setPlaying(false);
   }, []);
 
+  const bufferingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearBufferingTimer = useCallback(() => {
+    if (bufferingTimerRef.current) {
+      clearTimeout(bufferingTimerRef.current);
+      bufferingTimerRef.current = null;
+    }
+  }, []);
+
+  const clearLoadingTimer = useCallback(() => {
+    if (loadingTimerRef.current) {
+      clearTimeout(loadingTimerRef.current);
+      loadingTimerRef.current = null;
+    }
+  }, []);
+
   const handleWaiting = useCallback(() => {
     setBuffering(true);
-  }, []);
+    clearBufferingTimer();
+    bufferingTimerRef.current = setTimeout(() => {
+      setError("Таймаут буферизации — поток не отвечает");
+      setBuffering(false);
+      stopPlayback();
+    }, 20000);
+  }, [clearBufferingTimer, stopPlayback]);
 
   const handleCanPlay = useCallback(() => {
     setBuffering(false);
-  }, []);
+    clearBufferingTimer();
+    clearLoadingTimer();
+  }, [clearBufferingTimer, clearLoadingTimer]);
 
   const handleVideoError = useCallback(() => {
     setError("Ошибка воспроизведения");
     setPlaying(false);
     setBuffering(false);
+    clearBufferingTimer();
+    clearLoadingTimer();
+  }, [clearBufferingTimer, clearLoadingTimer]);
+
+  const handleStalled = useCallback(() => {
+    setBuffering(true);
   }, []);
 
   const showControlsTemporarily = useCallback(() => {
@@ -206,6 +237,8 @@ function App() {
   const playChannel = useCallback(
     (channel: Channel) => {
       stopPlayback();
+      clearBufferingTimer();
+      clearLoadingTimer();
       setCurrentChannel(channel);
       addToHistory(channel);
       setShowControls(true);
@@ -215,24 +248,41 @@ function App() {
 
       setError(null);
 
+      loadingTimerRef.current = setTimeout(() => {
+        setError("Таймаут загрузки — канал недоступен");
+        setBuffering(false);
+        stopPlayback();
+      }, 30000);
+
+      const onPlayClear = () => {
+        clearLoadingTimer();
+        clearBufferingTimer();
+        v.removeEventListener("play", onPlayClear);
+      };
+      v.addEventListener("play", onPlayClear);
+
       const isHls = channel.url.includes(".m3u8") || channel.url.includes(".m3u");
       if (Hls.isSupported() && isHls) {
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
-          backBufferLength: 30,
-          maxBufferLength: 30,
-          maxMaxBufferLength: 60,
-          manifestLoadingTimeOut: 20000,
-          manifestLoadingMaxRetry: 5,
-          manifestLoadingMaxRetryTimeout: 10000,
-          levelLoadingTimeOut: 20000,
-          levelLoadingMaxRetry: 5,
-          levelLoadingMaxRetryTimeout: 10000,
-          fragLoadingTimeOut: 20000,
-          fragLoadingMaxRetry: 5,
-          fragLoadingMaxRetryTimeout: 10000,
-          startLevel: -1,
+          backBufferLength: 60,
+          maxBufferLength: 60,
+          maxMaxBufferLength: 120,
+          manifestLoadingTimeOut: 30000,
+          manifestLoadingMaxRetry: 8,
+          manifestLoadingMaxRetryTimeout: 15000,
+          levelLoadingTimeOut: 30000,
+          levelLoadingMaxRetry: 8,
+          levelLoadingMaxRetryTimeout: 15000,
+          fragLoadingTimeOut: 30000,
+          fragLoadingMaxRetry: 8,
+          fragLoadingMaxRetryTimeout: 15000,
+          startLevel: 1,
+          abrEwmaDefaultEstimate: 5000000,
+          abrBandWidthFactor: 0.8,
+          abrBandWidthUpFactor: 0.7,
+          abrMaxWithRealBitrate: true,
         });
 
         let fallbackTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
@@ -249,8 +299,6 @@ function App() {
         hls.attachMedia(v);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (fallbackTimer) clearTimeout(fallbackTimer);
-          fallbackTimer = null;
           v.play().catch(() => {});
         });
 
@@ -270,7 +318,7 @@ function App() {
         }, 100);
       }
     },
-    [stopPlayback, addToHistory]
+    [stopPlayback, addToHistory, clearBufferingTimer, clearLoadingTimer]
   );
 
   const loadPlaylist = useCallback(
@@ -516,6 +564,7 @@ function App() {
                 onWaiting={handleWaiting}
                 onCanPlay={handleCanPlay}
                 onError={handleVideoError}
+                onStalled={handleStalled}
                 onDurationChange={handleTimeUpdate}
                 onClick={togglePlay}
               />
