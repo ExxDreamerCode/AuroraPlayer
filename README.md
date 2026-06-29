@@ -33,7 +33,6 @@ aurora-player\src-tauri\target\release\bundle\nsis\Aurora Player_0.1.0_x64-setup
 
 ```bash
 cd aurora-player
-npm install
 npm run tauri build
 ```
 
