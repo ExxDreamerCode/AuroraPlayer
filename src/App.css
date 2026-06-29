@@ -804,6 +804,93 @@ html, body, #root {
   to { transform: rotate(360deg); }
 }
 
+/* Debug panel */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.debug-btn {
+  font-size: 14px !important;
+  padding: 2px 4px !important;
+  width: 28px !important;
+  height: 28px !important;
+  opacity: 0.5;
+  transition: var(--transition);
+}
+
+.debug-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.debug-btn.active {
+  opacity: 1;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.debug-panel {
+  position: absolute;
+  bottom: 80px;
+  right: 12px;
+  width: 400px;
+  max-height: 300px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.debug-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--border);
+}
+
+.debug-logs {
+  overflow-y: auto;
+  padding: 6px 0;
+  font-family: "SF Mono", "Consolas", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  max-height: 260px;
+}
+
+.debug-logs::-webkit-scrollbar {
+  width: 3px;
+}
+
+.debug-logs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.debug-logs::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.debug-entry {
+  padding: 1px 12px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.debug-entry:first-child {
+  padding-top: 4px;
+}
+
 .player-error {
   position: absolute;
   top: 50%;

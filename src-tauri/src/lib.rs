@@ -92,6 +92,44 @@ fn resolve_url(url: &str, base: Option<&str>) -> String {
 }
 
 #[tauri::command]
+async fn check_url(url: String) -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let start = std::time::Instant::now();
+
+    match client.head(&url).send().await {
+        Ok(response) => {
+            let elapsed = start.elapsed().as_millis();
+            let status = response.status().as_u16();
+            let content_type = response
+                .headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("unknown")
+                .to_string();
+            Ok(format!("ok:{}:{}ms:{}", status, elapsed, content_type))
+        }
+        Err(e) => {
+            let elapsed = start.elapsed().as_millis();
+            let status = e.status().map(|s| s.as_u16()).unwrap_or(0);
+            let kind = if e.is_connect() {
+                "connection_refused"
+            } else if e.is_timeout() {
+                "timeout"
+            } else if e.is_status() {
+                "http_error"
+            } else {
+                "unknown"
+            };
+            Ok(format!("fail:{}:{}ms:{}:{}", status, elapsed, kind, e))
+        }
+    }
+}
+
+#[tauri::command]
 async fn detect_and_load(input: String) -> Result<Playlist, String> {
     let trimmed = input.trim();
 
@@ -155,7 +193,7 @@ async fn detect_and_load(input: String) -> Result<Playlist, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![detect_and_load])
+        .invoke_handler(tauri::generate_handler![detect_and_load, check_url])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

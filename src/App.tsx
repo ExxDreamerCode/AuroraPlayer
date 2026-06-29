@@ -47,11 +47,26 @@ function App() {
   const [muted, setMuted] = useState(false);
   const [buffering, setBuffering] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const [showDebug, setShowDebug] = useState(false);
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const debugLogRef = useRef<string[]>([]);
+
+  const addDebug = useCallback(function addDebugFn(msg: string) {
+    const ts = new Date().toLocaleTimeString();
+    const entry = `[${ts}] ${msg}`;
+    const current = debugLogRef.current;
+    const updated = current.length > 50 ? [...current.slice(1), entry] : [...current, entry];
+    debugLogRef.current = updated;
+    if (typeof setDebugLog === 'function') {
+      setDebugLog(updated);
+    }
+    console.log(entry);
+  }, []);
 
   useEffect(() => {
     try {
@@ -173,9 +188,10 @@ function App() {
   }, []);
 
   const handleVideoPlay = useCallback(() => {
+    addDebug("▶ Воспроизведение началось");
     setPlaying(true);
     setError(null);
-  }, []);
+  }, [addDebug]);
 
   const handleVideoPause = useCallback(() => {
     setPlaying(false);
@@ -183,6 +199,8 @@ function App() {
 
   const bufferingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stallRecoveryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manifestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearBufferingTimer = useCallback(() => {
     if (bufferingTimerRef.current) {
@@ -198,33 +216,62 @@ function App() {
     }
   }, []);
 
+  const clearStallRecovery = useCallback(() => {
+    if (stallRecoveryRef.current) {
+      clearTimeout(stallRecoveryRef.current);
+      stallRecoveryRef.current = null;
+    }
+  }, []);
+
+  const clearManifestTimeout = useCallback(() => {
+    if (manifestTimeoutRef.current) {
+      clearTimeout(manifestTimeoutRef.current);
+      manifestTimeoutRef.current = null;
+    }
+  }, []);
+
   const handleWaiting = useCallback(() => {
+    addDebug("⏳ Буферизация (waiting)");
     setBuffering(true);
     clearBufferingTimer();
     bufferingTimerRef.current = setTimeout(() => {
+      addDebug("⏰ Таймаут буферизации 30с");
       setError("Таймаут буферизации — поток не отвечает");
       setBuffering(false);
       stopPlayback();
-    }, 20000);
-  }, [clearBufferingTimer, stopPlayback]);
+    }, 30000);
+  }, [clearBufferingTimer, stopPlayback, addDebug]);
 
   const handleCanPlay = useCallback(() => {
+    addDebug("✅ CanPlay");
     setBuffering(false);
     clearBufferingTimer();
     clearLoadingTimer();
-  }, [clearBufferingTimer, clearLoadingTimer]);
+    clearStallRecovery();
+  }, [clearBufferingTimer, clearLoadingTimer, clearStallRecovery, addDebug]);
 
   const handleVideoError = useCallback(() => {
+    addDebug("❌ Ошибка видео");
     setError("Ошибка воспроизведения");
     setPlaying(false);
     setBuffering(false);
     clearBufferingTimer();
     clearLoadingTimer();
-  }, [clearBufferingTimer, clearLoadingTimer]);
+    clearStallRecovery();
+  }, [clearBufferingTimer, clearLoadingTimer, clearStallRecovery, addDebug]);
 
   const handleStalled = useCallback(() => {
+    addDebug("⚠️ Stalled (завис)");
     setBuffering(true);
-  }, []);
+    clearStallRecovery();
+    stallRecoveryRef.current = setTimeout(() => {
+      const v = videoRef.current;
+      if (v && !v.paused && buffering) {
+        addDebug("🔄 Попытка восстановления после stall");
+        v.play().catch(() => {});
+      }
+    }, 5000);
+  }, [buffering, clearStallRecovery, addDebug]);
 
   const showControlsTemporarily = useCallback(() => {
     setShowControls(true);
@@ -235,90 +282,198 @@ function App() {
   }, [playing]);
 
   const playChannel = useCallback(
-    (channel: Channel) => {
+    async (channel: Channel) => {
+      addDebug(`▶ Выбран канал: ${channel.name}`);
+      addDebug(`📎 URL: ${channel.url}`);
       stopPlayback();
       clearBufferingTimer();
       clearLoadingTimer();
+      clearStallRecovery();
+      clearManifestTimeout();
       setCurrentChannel(channel);
       addToHistory(channel);
       setShowControls(true);
+      setError(null);
 
       const v = videoRef.current;
       if (!v) return;
 
-      setError(null);
-
-      loadingTimerRef.current = setTimeout(() => {
-        setError("Таймаут загрузки — канал недоступен");
-        setBuffering(false);
-        stopPlayback();
-      }, 30000);
-
-      const onPlayClear = () => {
-        clearLoadingTimer();
-        clearBufferingTimer();
-        v.removeEventListener("play", onPlayClear);
-      };
-      v.addEventListener("play", onPlayClear);
+      addDebug("🔍 Проверка URL...");
+      try {
+        const result = await invoke<string>("check_url", { url: channel.url });
+        addDebug(`📡 Результат: ${result}`);
+        
+        const parts = result.split(":");
+        if (parts[0] === "fail") {
+          const status = parts[1];
+          const elapsed = parts[2];
+          const kind = parts[3];
+          
+          let errorMsg = "";
+          if (kind === "connection_refused") {
+            errorMsg = "Сервер канала не отвечает";
+          } else if (kind === "timeout") {
+            errorMsg = "Сервер канала не отвечает (timeout)";
+          } else if (status === "404") {
+            errorMsg = "Канал не найден (404)";
+          } else if (status === "403") {
+            errorMsg = "Доступ запрещён (403)";
+          } else {
+            errorMsg = `Канал недоступен (${kind})`;
+          }
+          
+          addDebug(`❌ ${errorMsg} (${elapsed}ms)`);
+          
+          addDebug(`❌ ${errorMsg}`);
+          setError(errorMsg);
+          setBuffering(false);
+          return;
+        }
+        
+        addDebug("✅ URL доступен, начинаем воспроизведение");
+      } catch (err: any) {
+        addDebug(`⚠️ Ошибка проверки URL: ${err}`);
+        // Продолжаем даже если проверка не удалась
+      }
 
       const isHls = channel.url.includes(".m3u8") || channel.url.includes(".m3u");
-      if (Hls.isSupported() && isHls) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: false,
-          backBufferLength: 60,
-          maxBufferLength: 60,
-          maxMaxBufferLength: 120,
-          manifestLoadingTimeOut: 30000,
-          manifestLoadingMaxRetry: 8,
-          manifestLoadingMaxRetryTimeout: 15000,
-          levelLoadingTimeOut: 30000,
-          levelLoadingMaxRetry: 8,
-          levelLoadingMaxRetryTimeout: 15000,
-          fragLoadingTimeOut: 30000,
-          fragLoadingMaxRetry: 8,
-          fragLoadingMaxRetryTimeout: 15000,
-          startLevel: 1,
-          abrEwmaDefaultEstimate: 5000000,
-          abrBandWidthFactor: 0.8,
-          abrBandWidthUpFactor: 0.7,
-          abrMaxWithRealBitrate: true,
-        });
+      const isRtsp = channel.url.startsWith("rtsp://");
+      const isUdp = channel.url.startsWith("udp://") || channel.url.startsWith("rtp://");
 
-        let fallbackTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
-          if (hlsRef.current) {
-            try { hlsRef.current.destroy(); } catch {}
-            hlsRef.current = null;
-          }
-          v.src = channel.url;
-          v.play().catch(() => {});
-        }, 25000);
-
-        hlsRef.current = hls;
-        hls.loadSource(channel.url);
-        hls.attachMedia(v);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          v.play().catch(() => {});
-        });
-
-        hls.on(Hls.Events.ERROR, (_e, d) => {
-          if (d.fatal) {
-            if (fallbackTimer) clearTimeout(fallbackTimer);
-            try { hls.destroy(); } catch {}
-            hlsRef.current = null;
-            v.src = channel.url;
-            v.play().catch(() => {});
-          }
-        });
-      } else {
+      if (!isHls || isRtsp || isUdp) {
+        addDebug(`📡 Прямой поток`);
         v.src = channel.url;
         setTimeout(() => {
-          v.play().catch(() => {});
-        }, 100);
+          v.play().catch((err: any) => {
+            addDebug(`❌ Direct error: ${err.message}`);
+            setError(`Не удалось воспроизвести: ${err.message || "ошибка"}`);
+            setBuffering(false);
+          });
+        }, 200);
+        return;
       }
+
+      if (!Hls.isSupported()) {
+        addDebug("⚠️ hls.js не поддерживается, прямой поток");
+        v.src = channel.url;
+        setTimeout(() => {
+          v.play().catch((err: any) => {
+            addDebug(`❌ Direct error: ${err.message}`);
+            setError(`Ошибка: ${err.message || "ошибка"}`);
+            setBuffering(false);
+          });
+        }, 200);
+        return;
+      }
+
+      addDebug("🎬 Запуск hls.js");
+
+      manifestTimeoutRef.current = setTimeout(() => {
+        addDebug("⏰ Таймаут загрузки манифеста 10с");
+        if (hlsRef.current) {
+          try { hlsRef.current.destroy(); } catch {}
+          hlsRef.current = null;
+        }
+        addDebug("🔄 Fallback на прямой src");
+        v.src = channel.url;
+        v.play().catch((err: any) => {
+          addDebug(`❌ Fallback error: ${err.message}`);
+          setError("Канал недоступен. Попробуйте другой.");
+          setBuffering(false);
+        });
+      }, 10000);
+
+      const hls = new Hls({
+        enableWorker: false,
+        backBufferLength: 30,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        manifestLoadingTimeOut: 10000,
+        manifestLoadingMaxRetry: 3,
+        manifestLoadingMaxRetryTimeout: 5000,
+        levelLoadingTimeOut: 10000,
+        levelLoadingMaxRetry: 3,
+        levelLoadingMaxRetryTimeout: 5000,
+        fragLoadingTimeOut: 10000,
+        fragLoadingMaxRetry: 3,
+        fragLoadingMaxRetryTimeout: 5000,
+        startLevel: -1,
+        abrEwmaDefaultEstimate: 20000000,
+        abrBandWidthFactor: 0.9,
+        abrBandWidthUpFactor: 0.8,
+        abrMaxWithRealBitrate: true,
+        capLevelToPlayerSize: false,
+        maxFragLookUpTolerance: 0.25,
+        maxBufferSize: 0,
+        maxBufferHole: 0.5,
+      });
+
+      hlsRef.current = hls;
+      hls.loadSource(channel.url);
+      hls.attachMedia(v);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        clearManifestTimeout();
+        if (hls.levels.length > 0) {
+          addDebug(`📋 Манифест загружен, уровней: ${hls.levels.length}`);
+          hls.nextLevel = hls.levels.length - 1;
+        } else {
+          addDebug("📋 Манифест загружен (без уровней)");
+        }
+        v.play().catch((err: any) => {
+          addDebug(`❌ Play: ${err.message}`);
+        });
+      });
+
+      hls.on(Hls.Events.LEVEL_SWITCHED, (_e, data) => {
+        const level = hls.levels[data.level];
+        if (level) {
+          addDebug(`📊 ${level.height}p / ${(level.bitrate / 1000).toFixed(0)} kbps`);
+        }
+      });
+
+      hls.on(Hls.Events.FRAG_LOADING, () => {
+        clearBufferingTimer();
+      });
+
+      hls.on(Hls.Events.FRAG_BUFFERED, () => {
+        if (buffering) {
+          addDebug("✅ Данные получены");
+          setBuffering(false);
+          clearBufferingTimer();
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, (_e, d) => {
+        addDebug(`⚠️ HLS: ${d.type}/${d.details} fatal=${d.fatal}`);
+        
+        if (d.fatal) {
+          switch (d.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              addDebug("🔄 recovery: startLoad()");
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              addDebug("🔄 recovery: recoverMediaError()");
+              hls.recoverMediaError();
+              break;
+            default:
+              clearManifestTimeout();
+              addDebug("🔄 Fallback на прямой поток");
+              try { hls.destroy(); } catch {}
+              hlsRef.current = null;
+              v.src = channel.url;
+              v.play().catch((err: any) => {
+                addDebug(`❌ Fallback: ${err.message}`);
+                setError("Канал недоступен. Попробуйте другой.");
+                setBuffering(false);
+              });
+              break;
+          }
+        }
+      });
     },
-    [stopPlayback, addToHistory, clearBufferingTimer, clearLoadingTimer]
+    [stopPlayback, addToHistory, clearBufferingTimer, clearLoadingTimer, clearStallRecovery, clearManifestTimeout, buffering, addDebug]
   );
 
   const loadPlaylist = useCallback(
@@ -545,12 +700,21 @@ function App() {
                   <div className="playing-name">{currentChannel.name}</div>
                 </div>
               </div>
-              <button
-                className={`player-fav ${isFavorite(currentChannel.url) ? "active" : ""}`}
-                onClick={() => toggleFavorite(currentChannel.url)}
-              >
-                {isFavorite(currentChannel.url) ? "★" : "☆"}
-              </button>
+              <div className="topbar-actions">
+                <button
+                  className={`ctrl-btn debug-btn ${showDebug ? "active" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }}
+                  title="Отладка"
+                >
+                  🐛
+                </button>
+                <button
+                  className={`player-fav ${isFavorite(currentChannel.url) ? "active" : ""}`}
+                  onClick={() => toggleFavorite(currentChannel.url)}
+                >
+                  {isFavorite(currentChannel.url) ? "★" : "☆"}
+                </button>
+              </div>
             </div>
 
             <div className="video-wrapper">
@@ -579,6 +743,17 @@ function App() {
                 <div className="player-error">{error}</div>
               )}
             </div>
+
+            {showDebug && (
+              <div className="debug-panel" onClick={(e) => e.stopPropagation()}>
+                <div className="debug-header">Отладка</div>
+                <div className="debug-logs">
+                  {debugLog.map((entry, i) => (
+                    <div key={i} className="debug-entry">{entry}</div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className={`player-controls ${showControls || !playing ? "visible" : ""}`}>
               <div className="progress-wrap" ref={progressRef} onClick={handleProgressClick}>
