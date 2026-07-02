@@ -642,11 +642,11 @@ function App() {
             <div className="logo-icon"><IconLogo /></div>
             <span className="logo-text">Aurora</span>
           </div>
-          <button className="sidebar-toggle" onClick={() => setShowSettings(!showSettings)} title="Настройки">
-            <IconSettings />
-          </button>
           <button className="sidebar-toggle" onClick={() => setSidebarOpen(false)} title="Скрыть панель">
             <IconSidebarToggle open={true} />
+          </button>
+          <button className="sidebar-toggle" onClick={() => setShowSettings(!showSettings)} title="Настройки">
+            <IconSettings />
           </button>
         </div>
 
