@@ -30,7 +30,10 @@ const THEMES: Theme[] = [
   { name: "green", accent: "#22c55e", accentSoft: "rgba(34, 197, 94, 0.35)", accentDim: "rgba(34, 197, 94, 0.14)", bgDeep: "#060a08", label: "Зелёная" },
   { name: "orange", accent: "#f97316", accentSoft: "rgba(249, 115, 22, 0.35)", accentDim: "rgba(249, 115, 22, 0.14)", bgDeep: "#0a0806", label: "Оранжевая" },
   { name: "pink", accent: "#ec4899", accentSoft: "rgba(236, 72, 153, 0.35)", accentDim: "rgba(236, 72, 153, 0.14)", bgDeep: "#0a0608", label: "Розовая" },
+  { name: "custom", accent: "#0a84ff", accentSoft: "rgba(10, 132, 255, 0.35)", accentDim: "rgba(10, 132, 255, 0.14)", bgDeep: "#060608", label: "Свой цвет" },
 ];
+
+const CUSTOM_COLOR_KEY = "aurora-player-custom-color";
 
 const THEME_KEY = "aurora-player-theme";
 
@@ -181,6 +184,9 @@ function App() {
   const [currentTheme, setCurrentTheme] = useState<string>(() => {
     try { return localStorage.getItem(THEME_KEY) || "default"; } catch { return "default"; }
   });
+  const [customColor, setCustomColor] = useState<string>(() => {
+    try { return localStorage.getItem(CUSTOM_COLOR_KEY) || "#0a84ff"; } catch { return "#0a84ff"; }
+  });
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -189,14 +195,23 @@ function App() {
   const progressRef = useRef<HTMLDivElement>(null);
   const debugLogRef = useRef<string[]>([]);
 
-  const applyTheme = useCallback((themeName: string) => {
+  const applyTheme = useCallback((themeName: string, color?: string) => {
     const theme = THEMES.find(t => t.name === themeName) || THEMES[0];
     const root = document.documentElement;
-    root.style.setProperty("--accent", theme.accent);
-    root.style.setProperty("--accent-soft", theme.accentSoft);
-    root.style.setProperty("--accent-dim", theme.accentDim);
+    const accent = themeName === "custom" && color ? color : theme.accent;
+    const hex = accent;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    root.style.setProperty("--accent", hex);
+    root.style.setProperty("--accent-soft", `rgba(${r}, ${g}, ${b}, 0.35)`);
+    root.style.setProperty("--accent-dim", `rgba(${r}, ${g}, ${b}, 0.14)`);
     root.style.setProperty("--bg-deep", theme.bgDeep);
     localStorage.setItem(THEME_KEY, themeName);
+    if (themeName === "custom" && color) {
+      localStorage.setItem(CUSTOM_COLOR_KEY, color);
+      setCustomColor(color);
+    }
     setCurrentTheme(themeName);
   }, []);
 
@@ -892,12 +907,24 @@ function App() {
                     <button
                       key={t.name}
                       className={`theme-btn ${currentTheme === t.name ? "active" : ""}`}
-                      onClick={() => applyTheme(t.name)}
+                      onClick={() => applyTheme(t.name, t.name === "custom" ? customColor : undefined)}
                     >
-                      <span className="theme-swatch" style={{ background: t.accent }} />
+                      <span className="theme-swatch" style={{ background: t.name === "custom" ? customColor : t.accent }} />
                       <span className="theme-label">{t.label}</span>
                     </button>
                   ))}
+                  {currentTheme === "custom" && (
+                    <div className="custom-color-row">
+                      <input
+                        type="color"
+                        className="color-picker"
+                        value={customColor}
+                        onChange={(e) => applyTheme("custom", e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span className="color-hex">{customColor}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
