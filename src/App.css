@@ -236,12 +236,26 @@ html, body, #root {
   letter-spacing: -0.1px;
 }
 
+.rename-input {
+  width: 100%;
+  padding: 2px 6px;
+  background: var(--glass-strong);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  font-family: inherit;
+}
+
 .playlist-list-count {
   font-size: 11px;
   color: var(--text-tertiary);
   margin-top: 1px;
 }
 
+.playlist-list-rename,
 .playlist-list-del {
   background: none;
   border: none;
@@ -256,13 +270,21 @@ html, body, #root {
   justify-content: center;
 }
 
+.playlist-list-rename svg,
 .playlist-list-del svg {
   width: 13px;
   height: 13px;
 }
 
+.playlist-list-item:hover .playlist-list-rename,
 .playlist-list-item:hover .playlist-list-del {
   opacity: 0.45;
+}
+
+.playlist-list-rename:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+  background: var(--accent-dim);
 }
 
 .playlist-list-del:hover {
@@ -427,11 +449,17 @@ html, body, #root {
   padding: 10px 12px;
   overflow-x: auto;
   border-bottom: 1px solid var(--glass-border);
-  scrollbar-width: none;
 }
 
 .group-tabs::-webkit-scrollbar {
-  display: none;
+  height: 3px;
+}
+.group-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+.group-tabs::-webkit-scrollbar-thumb {
+  background: var(--glass-border-strong);
+  border-radius: 2px;
 }
 
 .group-tab {

@@ -77,6 +77,12 @@ const IconClose = () => (
     <path d="M18 6L6 18M6 6l12 12" />
   </svg>
 );
+const IconEdit = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
 const IconStar = ({ filled }: { filled: boolean }) => (
   <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
     <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8L5.7 21l1.7-7L2 9.2l7.1-.6L12 2z" />
@@ -134,7 +140,10 @@ function App() {
   const [showControls, setShowControls] = useState(false);
   const [debugLog, setDebugLog] = useState<string[]>([]);
   const [showDebug, setShowDebug] = useState(false);
+  const [renamingPlaylist, setRenamingPlaylist] = useState<string | null>(null);
+  const [renameInput, setRenameInput] = useState("");
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -481,11 +490,10 @@ function App() {
       setSelectedGroup("all");
       setShowFavorites(false);
       setSearch("");
-      stopPlayback();
-      setCurrentChannel(null);
+      // Не сбрасываем видео — оно продолжает играть
       autoSavePlaylist(result);
     },
-    [stopPlayback, autoSavePlaylist]
+    [autoSavePlaylist]
   );
 
   const handleLoad = async () => {
@@ -505,9 +513,8 @@ function App() {
 
   const closePlaylist = () => {
     setPlaylist(null);
-    setCurrentChannel(null);
     setSearch("");
-    stopPlayback();
+    // Не сбрасываем канал и не останавливаем видео
   };
 
   const toggleFavorite = (url: string) => {
@@ -520,6 +527,32 @@ function App() {
   const deleteSavedPlaylist = (name: string) => {
     savePlaylists(savedPlaylists.filter((p) => p.name !== name));
     if (playlist?.name === name) setPlaylist(null);
+  };
+
+  const startRenaming = (name: string) => {
+    setRenamingPlaylist(name);
+    setRenameInput(name);
+    setTimeout(() => renameInputRef.current?.select(), 50);
+  };
+
+  const confirmRename = () => {
+    const oldName = renamingPlaylist;
+    const newName = renameInput.trim();
+    setRenamingPlaylist(null);
+    setRenameInput("");
+    if (!oldName || !newName || newName === oldName) return;
+    const updated = savedPlaylists.map((p) =>
+      p.name === oldName ? { ...p, name: newName } : p
+    );
+    savePlaylists(updated);
+    if (playlist?.name === oldName) {
+      setPlaylist({ ...playlist, name: newName });
+    }
+  };
+
+  const cancelRename = () => {
+    setRenamingPlaylist(null);
+    setRenameInput("");
   };
 
   const sourceChannels = showFavorites
@@ -658,9 +691,32 @@ function App() {
                   <div key={i} className="playlist-list-item" onClick={() => loadPlaylist(p)}>
                     <div className="playlist-list-icon"><IconTV /></div>
                     <div className="playlist-list-body">
-                      <div className="playlist-list-name">{p.name}</div>
+                      {renamingPlaylist === p.name ? (
+                        <input
+                          ref={renameInputRef}
+                          className="rename-input"
+                          value={renameInput}
+                          onChange={(e) => setRenameInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") confirmRename();
+                            if (e.key === "Escape") cancelRename();
+                          }}
+                          onBlur={confirmRename}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <div className="playlist-list-name">{p.name}</div>
+                      )}
                       <div className="playlist-list-count">{p.channels.length} каналов</div>
                     </div>
+                    <button
+                      className="playlist-list-rename"
+                      onClick={(e) => { e.stopPropagation(); startRenaming(p.name); }}
+                      title="Переименовать"
+                    >
+                      <IconEdit />
+                    </button>
                     <button
                       className="playlist-list-del"
                       onClick={(e) => { e.stopPropagation(); deleteSavedPlaylist(p.name); }}
