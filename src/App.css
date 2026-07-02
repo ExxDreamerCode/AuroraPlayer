@@ -1051,12 +1051,6 @@ html, body, #root {
   background: var(--accent-dim) !important;
 }
 
-.settings-panel-inline {
-  border-bottom: 1px solid var(--glass-border);
-  background: var(--glass);
-  overflow: hidden;
-}
-
 .settings-panel {
   position: absolute;
   top: 70px;
