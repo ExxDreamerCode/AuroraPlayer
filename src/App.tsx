@@ -210,7 +210,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    applyTheme(currentTheme);
+    applyTheme(currentTheme, currentTheme === "custom" ? customColor : undefined);
   }, []);
 
   const addDebug = useCallback(function addDebugFn(msg: string) {
