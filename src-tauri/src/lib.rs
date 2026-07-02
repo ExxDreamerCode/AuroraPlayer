@@ -23,7 +23,9 @@ fn parse_m3u(content: &str, source_url: Option<&str>) -> Vec<Channel> {
 
     for line in content.lines() {
         let line = line.trim();
-        if line.starts_with("#EXTINF:") {
+        if line.starts_with("#EXTGRP:") {
+            current_group = Some(line[8..].to_string());
+        } else if line.starts_with("#EXTINF:") {
             if let Some(meta_start) = line.find(',') {
                 let meta = &line[8..meta_start];
                 current_name = line[meta_start + 1..].to_string();
@@ -48,7 +50,7 @@ fn parse_m3u(content: &str, source_url: Option<&str>) -> Vec<Channel> {
                     name: current_name.clone(),
                     url: line.to_string(),
                     logo: current_logo.take(),
-                    group: current_group.take(),
+                    group: current_group.clone(),
                 });
                 current_name.clear();
             } else {
@@ -57,7 +59,7 @@ fn parse_m3u(content: &str, source_url: Option<&str>) -> Vec<Channel> {
                     name: format!("Канал {}", url_index),
                     url: resolve_url(line, source_url),
                     logo: None,
-                    group: None,
+                    group: current_group.clone(),
                 });
             }
         }
