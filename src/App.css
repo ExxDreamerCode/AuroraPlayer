@@ -52,6 +52,72 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: min-width 0.25s ease, width 0.25s ease, opacity 0.25s ease;
+}
+
+.sidebar-collapsed {
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sidebar-toggle {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: var(--ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar-toggle:hover {
+  color: var(--text);
+  background: var(--glass-hover);
+}
+
+.sidebar-reveal {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  background: rgba(16, 16, 20, 0.7);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-left: none;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 10px 5px;
+  transition: var(--ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-reveal:hover {
+  color: var(--text);
+  background: rgba(16, 16, 20, 0.9);
+}
+
+.sidebar-reveal svg {
+  width: 16px;
+  height: 16px;
 }
 
 .sidebar-header {
@@ -59,6 +125,7 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 9px;
+  flex-shrink: 0;
 }
 
 .logo {
@@ -884,6 +951,7 @@ html, body, #root {
 .ctrl-btn,
 .icon-btn,
 .toolbar-back,
+.playlist-list-rename,
 .playlist-list-del,
 .search-clear,
 .channel-fav {

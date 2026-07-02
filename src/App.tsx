@@ -117,6 +117,15 @@ const IconArrow = () => (
     <path d="M5 12h14M12 5l7 7-7 7" />
   </svg>
 );
+const IconSidebarToggle = ({ open }: { open: boolean }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    {open ? (
+      <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /></>
+    ) : (
+      <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M15 3v18" /></>
+    )}
+  </svg>
+);
 
 function App() {
   const [input, setInput] = useState("");
@@ -142,6 +151,7 @@ function App() {
   const [showDebug, setShowDebug] = useState(false);
   const [renamingPlaylist, setRenamingPlaylist] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -490,7 +500,6 @@ function App() {
       setSelectedGroup("all");
       setShowFavorites(false);
       setSearch("");
-      // Не сбрасываем видео — оно продолжает играть
       autoSavePlaylist(result);
     },
     [autoSavePlaylist]
@@ -514,7 +523,6 @@ function App() {
   const closePlaylist = () => {
     setPlaylist(null);
     setSearch("");
-    // Не сбрасываем канал и не останавливаем видео
   };
 
   const toggleFavorite = (url: string) => {
@@ -569,12 +577,15 @@ function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? "" : "sidebar-collapsed"}`}>
         <div className="sidebar-header">
           <div className="logo">
             <div className="logo-icon"><IconLogo /></div>
             <span className="logo-text">Aurora</span>
           </div>
+          <button className="sidebar-toggle" onClick={() => setSidebarOpen(false)} title="Скрыть панель">
+            <IconSidebarToggle open={true} />
+          </button>
         </div>
 
         <div className="playlist-inputs">
@@ -747,6 +758,12 @@ function App() {
           </>
         )}
       </aside>
+
+      {!sidebarOpen && (
+        <button className="sidebar-reveal" onClick={() => setSidebarOpen(true)} title="Показать панель">
+          <IconSidebarToggle open={false} />
+        </button>
+      )}
 
       <main
         className="player-area"
