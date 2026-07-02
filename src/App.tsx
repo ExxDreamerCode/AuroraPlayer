@@ -15,6 +15,25 @@ interface Playlist {
   name: string;
 }
 
+interface Theme {
+  name: string;
+  accent: string;
+  accentSoft: string;
+  accentDim: string;
+  bgDeep: string;
+  label: string;
+}
+
+const THEMES: Theme[] = [
+  { name: "default", accent: "#0a84ff", accentSoft: "rgba(10, 132, 255, 0.35)", accentDim: "rgba(10, 132, 255, 0.14)", bgDeep: "#060608", label: "Синяя" },
+  { name: "purple", accent: "#a855f7", accentSoft: "rgba(168, 85, 247, 0.35)", accentDim: "rgba(168, 85, 247, 0.14)", bgDeep: "#0a0a12", label: "Фиолетовая" },
+  { name: "green", accent: "#22c55e", accentSoft: "rgba(34, 197, 94, 0.35)", accentDim: "rgba(34, 197, 94, 0.14)", bgDeep: "#060a08", label: "Зелёная" },
+  { name: "orange", accent: "#f97316", accentSoft: "rgba(249, 115, 22, 0.35)", accentDim: "rgba(249, 115, 22, 0.14)", bgDeep: "#0a0806", label: "Оранжевая" },
+  { name: "pink", accent: "#ec4899", accentSoft: "rgba(236, 72, 153, 0.35)", accentDim: "rgba(236, 72, 153, 0.14)", bgDeep: "#0a0608", label: "Розовая" },
+];
+
+const THEME_KEY = "aurora-player-theme";
+
 const STORAGE_KEY = "aurora-player-playlists";
 const FAVORITES_KEY = "aurora-player-favorites";
 const HISTORY_KEY = "aurora-player-history";
@@ -126,6 +145,12 @@ const IconSidebarToggle = ({ open }: { open: boolean }) => (
     )}
   </svg>
 );
+const IconSettings = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+  </svg>
+);
 
 function App() {
   const [input, setInput] = useState("");
@@ -152,6 +177,10 @@ function App() {
   const [renamingPlaylist, setRenamingPlaylist] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState<string>(() => {
+    try { return localStorage.getItem(THEME_KEY) || "default"; } catch { return "default"; }
+  });
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -159,6 +188,21 @@ function App() {
   const hlsRef = useRef<Hls | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const debugLogRef = useRef<string[]>([]);
+
+  const applyTheme = useCallback((themeName: string) => {
+    const theme = THEMES.find(t => t.name === themeName) || THEMES[0];
+    const root = document.documentElement;
+    root.style.setProperty("--accent", theme.accent);
+    root.style.setProperty("--accent-soft", theme.accentSoft);
+    root.style.setProperty("--accent-dim", theme.accentDim);
+    root.style.setProperty("--bg-deep", theme.bgDeep);
+    localStorage.setItem(THEME_KEY, themeName);
+    setCurrentTheme(themeName);
+  }, []);
+
+  useEffect(() => {
+    applyTheme(currentTheme);
+  }, []);
 
   const addDebug = useCallback(function addDebugFn(msg: string) {
     const ts = new Date().toLocaleTimeString();
@@ -795,6 +839,13 @@ function App() {
 
               <div className="glass-pill topbar-actions">
                 <button
+                  className={`ctrl-btn settings-btn ${showSettings ? "active" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
+                  title="Настройки"
+                >
+                  <IconSettings />
+                </button>
+                <button
                   className={`ctrl-btn debug-btn ${showDebug ? "active" : ""}`}
                   onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }}
                   title="Отладка"
@@ -832,6 +883,24 @@ function App() {
               )}
               {error && <div className="player-error">{error}</div>}
             </div>
+
+            {showSettings && (
+              <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+                <div className="settings-header">Тема оформления</div>
+                <div className="settings-themes">
+                  {THEMES.map((t) => (
+                    <button
+                      key={t.name}
+                      className={`theme-btn ${currentTheme === t.name ? "active" : ""}`}
+                      onClick={() => applyTheme(t.name)}
+                    >
+                      <span className="theme-swatch" style={{ background: t.accent }} />
+                      <span className="theme-label">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {showDebug && (
               <div className="debug-panel" onClick={(e) => e.stopPropagation()}>

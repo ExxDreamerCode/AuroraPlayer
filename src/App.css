@@ -1025,6 +1025,19 @@ html, body, #root {
   color: var(--accent);
 }
 
+.settings-btn {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.settings-btn:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.settings-btn.active {
+  color: var(--accent) !important;
+  background: var(--accent-dim) !important;
+}
+
 .debug-btn {
   color: rgba(255, 255, 255, 0.45) !important;
 }
@@ -1036,6 +1049,77 @@ html, body, #root {
 .debug-btn.active {
   color: var(--accent) !important;
   background: var(--accent-dim) !important;
+}
+
+/* Settings panel */
+.settings-panel {
+  position: absolute;
+  top: 70px;
+  right: 16px;
+  width: 220px;
+  background: rgba(10, 10, 14, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  z-index: 20;
+  overflow: hidden;
+}
+
+.settings-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.settings-themes {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--ease);
+  text-align: left;
+  width: 100%;
+}
+
+.theme-btn:hover {
+  background: var(--glass);
+  color: var(--text);
+}
+
+.theme-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--text);
+}
+
+.theme-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+}
+
+.theme-label {
+  font-weight: 500;
 }
 
 .volume-group {
