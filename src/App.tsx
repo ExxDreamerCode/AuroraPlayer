@@ -18,19 +18,7 @@ interface Playlist {
 const STORAGE_KEY = "aurora-player-playlists";
 const FAVORITES_KEY = "aurora-player-favorites";
 const HISTORY_KEY = "aurora-player-history";
-const THEME_KEY = "aurora-player-theme";
 const MAX_HISTORY = 20;
-
-const THEME_PRESETS = {
-  "Синий (по умолчанию)": { accent: "#0a84ff", bg: "#0a0a0c" },
-  "Фиолетовый": { accent: "#bf5af2", bg: "#0a0a0c" },
-  "Розовый": { accent: "#ff375f", bg: "#0a0a0c" },
-  "Зеленый": { accent: "#30d158", bg: "#0a0a0c" },
-  "Оранжевый": { accent: "#ff9f0a", bg: "#0a0a0c" },
-  "Светлая": { accent: "#0a84ff", bg: "#f5f5f7" },
-} as const;
-
-type ThemeKey = keyof typeof THEME_PRESETS;
 
 function formatTime(sec: number): string {
   if (!isFinite(sec) || sec < 0) return "0:00";
@@ -39,26 +27,90 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function parseAccent(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, 0.14)`;
-}
-
-function parseGlow(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, 0.25)`;
-}
-
-function playMedia(v: HTMLVideoElement) {
-  v.muted = true;
-  v.load();
-  v.play().catch(() => {});
-  setTimeout(() => { v.muted = false; }, 200);
-}
+const IconPlay = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor">
+    <path d="M8 5.14v14l11-7-11-7z" />
+  </svg>
+);
+const IconPause = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+  </svg>
+);
+const IconVolume2 = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M11 5L6 9H3v6h3l5 4V5z" />
+    <path d="M16 9a3 3 0 010 6" />
+  </svg>
+);
+const IconVolumeMute = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M11 5L6 9H3v6h3l5 4V5z" />
+    <line x1="23" y1="9" x2="17" y2="15" />
+    <line x1="17" y1="9" x2="23" y2="15" />
+  </svg>
+);
+const IconVolumeLow = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M11 5L6 9H3v6h3l5 4V5z" />
+    <path d="M15.5 9.5a2 2 0 010 5" />
+  </svg>
+);
+const IconFullscreen = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M21 16v3a2 2 0 01-2 2h-3M3 16v3a2 2 0 002 2h3" />
+  </svg>
+);
+const IconBack = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+);
+const IconSearch = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21l-4.3-4.3" />
+  </svg>
+);
+const IconClose = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M18 6L6 18M6 6l12 12" />
+  </svg>
+);
+const IconStar = ({ filled }: { filled: boolean }) => (
+  <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+    <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8L5.7 21l1.7-7L2 9.2l7.1-.6L12 2z" />
+  </svg>
+);
+const IconBug = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M8 2l1.9 1.9M14.1 2L16 3.9M9 9h6M9 12h6M9 15h3" />
+    <path d="M4 8h3M4 12h2M4 16h3M17 8h3M18 12h2M17 16h3" />
+    <rect x="8" y="6" width="8" height="14" rx="3" />
+  </svg>
+);
+const IconFolder = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+  </svg>
+);
+const IconTV = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="7" width="20" height="14" rx="2" />
+    <path d="M16 2l-4 5-4-5" />
+  </svg>
+);
+const IconLogo = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2">
+    <circle cx="12" cy="12" r="8" />
+    <circle cx="12" cy="12" r="3" fill="#fff" stroke="none" />
+  </svg>
+);
+const IconArrow = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);
 
 function App() {
   const [input, setInput] = useState("");
@@ -82,19 +134,12 @@ function App() {
   const [showControls, setShowControls] = useState(false);
   const [debugLog, setDebugLog] = useState<string[]>([]);
   const [showDebug, setShowDebug] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [renamingPlaylist, setRenamingPlaylist] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [customAccent, setCustomAccent] = useState("");
-  const [themeKey, setThemeKey] = useState<ThemeKey>("Синий (по умолчанию)");
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const debugLogRef = useRef<string[]>([]);
-  const playingStartedRef = useRef(false);
 
   const addDebug = useCallback(function addDebugFn(msg: string) {
     const ts = new Date().toLocaleTimeString();
@@ -102,9 +147,7 @@ function App() {
     const current = debugLogRef.current;
     const updated = current.length > 50 ? [...current.slice(1), entry] : [...current, entry];
     debugLogRef.current = updated;
-    if (typeof setDebugLog === 'function') {
-      setDebugLog(updated);
-    }
+    setDebugLog(updated);
     console.log(entry);
   }, []);
 
@@ -116,36 +159,10 @@ function App() {
       if (f) setFavorites(JSON.parse(f));
       const h = localStorage.getItem(HISTORY_KEY);
       if (h) setHistory(JSON.parse(h));
-      const t = localStorage.getItem(THEME_KEY);
-      if (t) {
-        const parsed = JSON.parse(t);
-        if (parsed.key && parsed.key in THEME_PRESETS) {
-          setThemeKey(parsed.key as ThemeKey);
-        } else if (parsed.custom) {
-          setThemeKey("Синий (по умолчанию)" as ThemeKey);
-          setCustomAccent(parsed.custom);
-        }
-      }
     } catch {}
   }, []);
 
   useEffect(() => () => hlsRef.current?.destroy(), []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (customAccent) {
-      root.style.setProperty("--accent", customAccent);
-      root.style.setProperty("--accent-hover", customAccent + "99");
-      root.style.setProperty("--accent-dim", parseAccent(customAccent));
-      root.style.setProperty("--accent-glow", parseGlow(customAccent));
-    } else {
-      const pre = THEME_PRESETS[themeKey];
-      root.style.setProperty("--accent", pre.accent);
-      root.style.setProperty("--accent-hover", pre.accent + "99");
-      root.style.setProperty("--accent-dim", parseAccent(pre.accent));
-      root.style.setProperty("--accent-glow", parseGlow(pre.accent));
-    }
-  }, [themeKey, customAccent]);
 
   const savePlaylists = useCallback((p: Playlist[]) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
@@ -162,25 +179,44 @@ function App() {
     setHistory(h);
   }, []);
 
-  const addToHistory = useCallback((ch: Channel) => {
-    const f = history.filter((h) => h.url !== ch.url);
-    saveHistory([ch, ...f].slice(0, MAX_HISTORY));
-  }, [history, saveHistory]);
+  const addToHistory = useCallback(
+    (ch: Channel) => {
+      const f = history.filter((h) => h.url !== ch.url);
+      saveHistory([ch, ...f].slice(0, MAX_HISTORY));
+    },
+    [history, saveHistory]
+  );
 
-  const autoSavePlaylist = useCallback((pl: Playlist) => {
-    const i = savedPlaylists.findIndex((p) => p.name === pl.name);
-    const u = i >= 0 ? savedPlaylists.map((p, idx) => (idx === i ? pl : p)) : [...savedPlaylists, pl];
-    savePlaylists(u);
-  }, [savedPlaylists, savePlaylists]);
+  const autoSavePlaylist = useCallback(
+    (pl: Playlist) => {
+      const i = savedPlaylists.findIndex((p) => p.name === pl.name);
+      const u = i >= 0 ? savedPlaylists.map((p, idx) => (idx === i ? pl : p)) : [...savedPlaylists, pl];
+      savePlaylists(u);
+    },
+    [savedPlaylists, savePlaylists]
+  );
+
+  const stopPlayback = useCallback(() => {
+    hlsRef.current?.destroy();
+    hlsRef.current = null;
+    const v = videoRef.current;
+    if (v) {
+      v.pause();
+      v.removeAttribute("src");
+      v.load();
+    }
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setBuffering(false);
+    setError(null);
+  }, []);
 
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) {
-      v.play().catch(() => {});
-    } else {
-      v.pause();
-    }
+    if (v.paused) v.play().catch(() => {});
+    else v.pause();
   }, []);
 
   const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,12 +225,8 @@ function App() {
     const v = videoRef.current;
     if (v) {
       v.volume = val;
-      if (val === 0) {
-        v.muted = true;
-        setMuted(true);
-      } else {
-        v.muted = muted;
-      }
+      if (val === 0) { v.muted = true; setMuted(true); }
+      else { v.muted = muted; }
     }
   }, [muted]);
 
@@ -216,209 +248,255 @@ function App() {
   const handleFullscreen = useCallback(() => {
     const el = document.querySelector(".player-area");
     if (!el) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      el.requestFullscreen();
-    }
+    if (document.fullscreenElement) document.exitFullscreen();
+    else el.requestFullscreen();
   }, []);
 
   const handleTimeUpdate = useCallback(() => {
     const v = videoRef.current;
-    if (v) {
-      setCurrentTime(v.currentTime);
-      setDuration(v.duration || 0);
-    }
+    if (v) { setCurrentTime(v.currentTime); setDuration(v.duration || 0); }
   }, []);
 
-  const handleVideoPlay = useCallback(() => {
-    if (!playingStartedRef.current) {
-      playingStartedRef.current = true;
-      addDebug("▶ Воспроизведение началось");
-    }
-    setPlaying(true);
-    setError(null);
-  }, [addDebug]);
-
-  const handleVideoPause = useCallback(() => {
-    setPlaying(false);
-  }, []);
+  const handleVideoPlay = useCallback(() => { addDebug("▶ Воспроизведение"); setPlaying(true); setError(null); }, [addDebug]);
+  const handleVideoPause = useCallback(() => { setPlaying(false); }, []);
 
   const bufferingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stallRecoveryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manifestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearBufferingTimer = useCallback(() => {
-    if (bufferingTimerRef.current) {
-      clearTimeout(bufferingTimerRef.current);
-      bufferingTimerRef.current = null;
-    }
-  }, []);
-
-  const clearManifestTimeout = useCallback(() => {
-    if (manifestTimeoutRef.current) {
-      clearTimeout(manifestTimeoutRef.current);
-      manifestTimeoutRef.current = null;
-    }
-  }, []);
+  const clearBufferingTimer = useCallback(() => { if (bufferingTimerRef.current) { clearTimeout(bufferingTimerRef.current); bufferingTimerRef.current = null; } }, []);
+  const clearLoadingTimer = useCallback(() => { if (loadingTimerRef.current) { clearTimeout(loadingTimerRef.current); loadingTimerRef.current = null; } }, []);
+  const clearStallRecovery = useCallback(() => { if (stallRecoveryRef.current) { clearTimeout(stallRecoveryRef.current); stallRecoveryRef.current = null; } }, []);
+  const clearManifestTimeout = useCallback(() => { if (manifestTimeoutRef.current) { clearTimeout(manifestTimeoutRef.current); manifestTimeoutRef.current = null; } }, []);
 
   const handleWaiting = useCallback(() => {
-    addDebug("⏳ Буферизация (waiting)");
+    addDebug("⏳ Буферизация");
     setBuffering(true);
     clearBufferingTimer();
     bufferingTimerRef.current = setTimeout(() => {
-      addDebug("⏰ Таймаут буферизации 30с");
-      setError("Таймаут буферизации — поток не отвечает");
+      addDebug("⏰ Таймаут буферизации");
+      setError("Таймаут — поток не отвечает");
       setBuffering(false);
+      stopPlayback();
     }, 30000);
-  }, [clearBufferingTimer, addDebug]);
+  }, [clearBufferingTimer, stopPlayback, addDebug]);
 
   const handleCanPlay = useCallback(() => {
     addDebug("✅ CanPlay");
     setBuffering(false);
-    clearBufferingTimer();
-  }, [clearBufferingTimer, addDebug]);
+    clearBufferingTimer(); clearLoadingTimer(); clearStallRecovery();
+  }, [clearBufferingTimer, clearLoadingTimer, clearStallRecovery, addDebug]);
 
   const handleVideoError = useCallback(() => {
     addDebug("❌ Ошибка видео");
     setError("Ошибка воспроизведения");
-    setPlaying(false);
-    setBuffering(false);
-    clearBufferingTimer();
-  }, [clearBufferingTimer, addDebug]);
+    setPlaying(false); setBuffering(false);
+    clearBufferingTimer(); clearLoadingTimer(); clearStallRecovery();
+  }, [clearBufferingTimer, clearLoadingTimer, clearStallRecovery, addDebug]);
 
   const handleStalled = useCallback(() => {
-    addDebug("⚠️ Stalled (завис)");
+    addDebug("⚠️ Stalled");
     setBuffering(true);
-  }, [addDebug]);
+    clearStallRecovery();
+    stallRecoveryRef.current = setTimeout(() => {
+      const v = videoRef.current;
+      if (v && !v.paused && buffering) { addDebug("🔄 Восстановление"); v.play().catch(() => {}); }
+    }, 5000);
+  }, [buffering, clearStallRecovery, addDebug]);
 
   const showControlsTemporarily = useCallback(() => {
     setShowControls(true);
     if (controlsTimer.current) clearTimeout(controlsTimer.current);
-    controlsTimer.current = setTimeout(() => {
-      if (playing) setShowControls(false);
-    }, 3000);
+    controlsTimer.current = setTimeout(() => { if (playing) setShowControls(false); }, 3000);
   }, [playing]);
 
-  const playChannel = useCallback((channel: Channel) => {
-    hlsRef.current?.destroy();
-    hlsRef.current = null;
-    clearBufferingTimer();
-    clearManifestTimeout();
-    playingStartedRef.current = false;
+  const playChannel = useCallback(
+    async (channel: Channel) => {
+      addDebug(`▶ Канал: ${channel.name}`);
+      addDebug(`📎 URL: ${channel.url}`);
+      stopPlayback();
+      clearBufferingTimer(); clearLoadingTimer(); clearStallRecovery(); clearManifestTimeout();
+      setCurrentChannel(channel);
+      addToHistory(channel);
+      setShowControls(true);
+      setError(null);
 
-    setCurrentChannel(channel);
-    addToHistory(channel);
-    setShowControls(true);
-    setError(null);
+      const v = videoRef.current;
+      if (!v) return;
 
-    const v = videoRef.current;
-    if (!v) return;
-
-    const isHls = channel.url.includes(".m3u8") || channel.url.includes(".m3u");
-
-    if (!isHls) {
-      v.src = channel.url;
-      playMedia(v);
-      return;
-    }
-
-    if (!Hls.isSupported()) {
-      v.src = channel.url;
-      playMedia(v);
-      return;
-    }
-
-    manifestTimeoutRef.current = setTimeout(() => {
-      addDebug("⏰ timeout manifest 10s");
-      if (hlsRef.current) {
-        try { hlsRef.current.destroy(); } catch {}
-        hlsRef.current = null;
-      }
-      v.src = channel.url;
-      playMedia(v);
-    }, 10000);
-
-    const hls = new Hls({
-      enableWorker: false,
-      backBufferLength: 30,
-      maxBufferLength: 30,
-      maxMaxBufferLength: 60,
-      manifestLoadingTimeOut: 10000,
-      manifestLoadingMaxRetry: 3,
-      manifestLoadingMaxRetryTimeout: 5000,
-      levelLoadingTimeOut: 10000,
-      levelLoadingMaxRetry: 3,
-      levelLoadingMaxRetryTimeout: 5000,
-      fragLoadingTimeOut: 5000,
-      fragLoadingMaxRetry: 2,
-      fragLoadingMaxRetryTimeout: 3000,
-      startLevel: -1,
-      abrEwmaDefaultEstimate: 20000000,
-      abrBandWidthFactor: 0.9,
-      abrBandWidthUpFactor: 0.8,
-      abrMaxWithRealBitrate: true,
-      capLevelToPlayerSize: false,
-    });
-
-    hlsRef.current = hls;
-    hls.loadSource(channel.url);
-    hls.attachMedia(v);
-
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      clearManifestTimeout();
-      if (hls.levels.length > 0) {
-        addDebug(`📋 Уровней: ${hls.levels.length}`);
-        hls.nextLevel = hls.levels.length - 1;
-      }
-      v.muted = true;
-      v.play().catch(() => {});
-      setTimeout(() => { v.muted = false; }, 200);
-    });
-
-    hls.on(Hls.Events.FRAG_LOADING, () => {
-      clearBufferingTimer();
-    });
-
-    hls.on(Hls.Events.ERROR, (_e, d) => {
-      addDebug(`⚠️ ${d.type}/${d.details} fatal=${d.fatal}`);
-      if (d.fatal) {
-        if (d.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          hls.startLoad();
-        } else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) {
-          hls.recoverMediaError();
-        } else {
-          clearManifestTimeout();
-          try { hls.destroy(); } catch {}
-          hlsRef.current = null;
-          v.src = channel.url;
-          playMedia(v);
+      try {
+        const result = await invoke<string>("check_url", { url: channel.url });
+        addDebug(`📡 ${result}`);
+        const parts = result.split(":");
+        if (parts[0] === "fail") {
+          const status = parts[1];
+          const elapsed = parts[2];
+          const kind = parts[3];
+          let errorMsg = "";
+          if (kind === "connection_refused") errorMsg = "Сервер не отвечает";
+          else if (kind === "timeout") errorMsg = "Сервер не отвечает (timeout)";
+          else if (status === "404") errorMsg = "Канал не найден (404)";
+          else if (status === "403") errorMsg = "Доступ запрещён (403)";
+          else errorMsg = `Канал недоступен (${kind})`;
+          addDebug(`❌ ${errorMsg} (${elapsed}ms)`);
+          setError(errorMsg);
+          setBuffering(false);
+          return;
         }
+        addDebug("✅ URL доступен");
+      } catch (err: any) {
+        addDebug(`⚠️ Проверка URL: ${err}`);
       }
-    });
-  }, [addToHistory, clearBufferingTimer, clearManifestTimeout, addDebug]);
 
-  const loadPlaylist = useCallback((result: Playlist) => {
-    setPlaylist(result);
-    const gs = ["all", ...new Set(result.channels.map((c) => c.group).filter(Boolean) as string[])];
-    setGroups(gs);
-    setSelectedGroup("all");
-    setShowFavorites(false);
-    setSearch("");
-    autoSavePlaylist(result);
-    addDebug(`📂 Плейлист: ${result.name} (${result.channels.length} каналов, ${gs.length - 1} групп)`);
-  }, [autoSavePlaylist, addDebug]);
+      const isHls = channel.url.includes(".m3u8") || channel.url.includes(".m3u");
+      const isRtsp = channel.url.startsWith("rtsp://");
+      const isUdp = channel.url.startsWith("udp://") || channel.url.startsWith("rtp://");
+
+      if (!isHls || isRtsp || isUdp) {
+        addDebug("📡 Прямой поток");
+        v.src = channel.url;
+        setTimeout(() => {
+          v.play().catch((err: any) => {
+            addDebug(`❌ ${err.message}`);
+            setError(`Ошибка: ${err.message || "неизвестная ошибка"}`);
+            setBuffering(false);
+          });
+        }, 200);
+        return;
+      }
+
+      if (!Hls.isSupported()) {
+        addDebug("⚠️ hls.js не поддерживается");
+        v.src = channel.url;
+        setTimeout(() => {
+          v.play().catch((err: any) => {
+            addDebug(`❌ ${err.message}`);
+            setError(`Ошибка: ${err.message || "ошибка"}`);
+            setBuffering(false);
+          });
+        }, 200);
+        return;
+      }
+
+      addDebug("🎬 Запуск hls.js");
+
+      manifestTimeoutRef.current = setTimeout(() => {
+        addDebug("⏰ Таймаут манифеста");
+        if (hlsRef.current) { try { hlsRef.current.destroy(); } catch {} hlsRef.current = null; }
+        addDebug("🔄 Fallback на прямой src");
+        v.src = channel.url;
+        v.play().catch((err: any) => {
+          addDebug(`❌ Fallback: ${err.message}`);
+          setError("Канал недоступен");
+          setBuffering(false);
+        });
+      }, 10000);
+
+      const hls = new Hls({
+        enableWorker: false,
+        backBufferLength: 30,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        manifestLoadingTimeOut: 10000,
+        manifestLoadingMaxRetry: 3,
+        manifestLoadingMaxRetryTimeout: 5000,
+        levelLoadingTimeOut: 10000,
+        levelLoadingMaxRetry: 3,
+        levelLoadingMaxRetryTimeout: 5000,
+        fragLoadingTimeOut: 10000,
+        fragLoadingMaxRetry: 3,
+        fragLoadingMaxRetryTimeout: 5000,
+        startLevel: -1,
+        abrEwmaDefaultEstimate: 20000000,
+        abrBandWidthFactor: 0.9,
+        abrBandWidthUpFactor: 0.8,
+        abrMaxWithRealBitrate: true,
+        capLevelToPlayerSize: false,
+        maxFragLookUpTolerance: 0.25,
+        maxBufferSize: 0,
+        maxBufferHole: 0.5,
+      });
+
+      hlsRef.current = hls;
+      hls.loadSource(channel.url);
+      hls.attachMedia(v);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        clearManifestTimeout();
+        if (hls.levels.length > 0) {
+          addDebug(`📋 Манифест, уровней: ${hls.levels.length}`);
+          hls.nextLevel = hls.levels.length - 1;
+        } else {
+          addDebug("📋 Манифест (без уровней)");
+        }
+        v.play().catch((err: any) => { addDebug(`❌ Play: ${err.message}`); });
+      });
+
+      hls.on(Hls.Events.LEVEL_SWITCHED, (_e, data) => {
+        const level = hls.levels[data.level];
+        if (level) addDebug(`📊 ${level.height}p / ${(level.bitrate / 1000).toFixed(0)} kbps`);
+      });
+
+      hls.on(Hls.Events.FRAG_LOADING, () => { clearBufferingTimer(); });
+      hls.on(Hls.Events.FRAG_BUFFERED, () => {
+        if (buffering) { addDebug("✅ Данные получены"); setBuffering(false); clearBufferingTimer(); }
+      });
+
+      hls.on(Hls.Events.ERROR, (_e, d) => {
+        addDebug(`⚠️ HLS: ${d.type}/${d.details} fatal=${d.fatal}`);
+        if (d.fatal) {
+          switch (d.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              addDebug("🔄 startLoad()");
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              addDebug("🔄 recoverMediaError()");
+              hls.recoverMediaError();
+              break;
+            default:
+              clearManifestTimeout();
+              addDebug("🔄 Fallback");
+              try { hls.destroy(); } catch {}
+              hlsRef.current = null;
+              v.src = channel.url;
+              v.play().catch((err: any) => {
+                addDebug(`❌ Fallback: ${err.message}`);
+                setError("Канал недоступен");
+                setBuffering(false);
+              });
+          }
+        }
+      });
+    },
+    [stopPlayback, addToHistory, clearBufferingTimer, clearLoadingTimer, clearStallRecovery, clearManifestTimeout, buffering, addDebug]
+  );
+
+  const loadPlaylist = useCallback(
+    (result: Playlist) => {
+      setPlaylist(result);
+      const gs = ["all", ...new Set(result.channels.map((c) => c.group).filter(Boolean) as string[])];
+      setGroups(gs);
+      setSelectedGroup("all");
+      setShowFavorites(false);
+      setSearch("");
+      stopPlayback();
+      setCurrentChannel(null);
+      autoSavePlaylist(result);
+    },
+    [stopPlayback, autoSavePlaylist]
+  );
 
   const handleLoad = async () => {
     const val = input.trim();
     if (!val) return;
     setLoading(true);
     setError(null);
-    addDebug(`📥 Загрузка: ${val.slice(0, 80)}...`);
     try {
       const result = await invoke<Playlist>("detect_and_load", { input: val });
       loadPlaylist(result);
     } catch (err) {
-      addDebug(`❌ Ошибка: ${err}`);
       setError(`Ошибка: ${err}`);
     } finally {
       setLoading(false);
@@ -427,7 +505,9 @@ function App() {
 
   const closePlaylist = () => {
     setPlaylist(null);
+    setCurrentChannel(null);
     setSearch("");
+    stopPlayback();
   };
 
   const toggleFavorite = (url: string) => {
@@ -442,32 +522,6 @@ function App() {
     if (playlist?.name === name) setPlaylist(null);
   };
 
-  const startRename = (name: string) => {
-    setRenamingPlaylist(name);
-    setRenameValue(name);
-    setTimeout(() => renameInputRef.current?.focus(), 50);
-  };
-
-  const confirmRename = () => {
-    if (!renamingPlaylist || !renameValue.trim()) {
-      setRenamingPlaylist(null);
-      return;
-    }
-    const newName = renameValue.trim();
-    const updated = savedPlaylists.map((p) => p.name === renamingPlaylist ? { ...p, name: newName } : p);
-    savePlaylists(updated);
-    if (playlist?.name === renamingPlaylist) {
-      setPlaylist({ ...playlist, name: newName });
-    }
-    setRenamingPlaylist(null);
-  };
-
-  const applyTheme = (key: ThemeKey) => {
-    setThemeKey(key);
-    setCustomAccent("");
-    localStorage.setItem(THEME_KEY, JSON.stringify({ key }));
-  };
-
   const sourceChannels = showFavorites
     ? playlist?.channels.filter((c) => favorites.includes(c.url)) ?? []
     : selectedGroup === "all"
@@ -478,106 +532,119 @@ function App() {
     ? sourceChannels.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     : sourceChannels;
 
+  const VolumeIcon = muted || volume === 0 ? IconVolumeMute : volume < 0.5 ? IconVolumeLow : IconVolume2;
+
   return (
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="logo">
-            <span className="logo-icon">A</span>
+            <div className="logo-icon"><IconLogo /></div>
             <span className="logo-text">Aurora</span>
           </div>
-          <button className="settings-gear" onClick={() => setShowSettings(!showSettings)} title="Настройки">⚙</button>
         </div>
-
-        {showSettings && (
-          <div className="settings-panel">
-            <div className="settings-header">Тема оформления</div>
-            <div className="theme-grid">
-              {(Object.keys(THEME_PRESETS) as ThemeKey[]).map((key) => {
-                const pre = THEME_PRESETS[key];
-                return (
-                  <button key={key} className={`theme-chip ${themeKey === key && !customAccent ? "active" : ""}`} onClick={() => applyTheme(key)}>
-                    <span className="theme-chip-dot" style={{ background: pre.accent }} />
-                    <span className="theme-chip-label">{key}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="settings-row">
-              <label className="settings-label">Свой цвет</label>
-              <div className="custom-color-row">
-                <input type="color" value={customAccent || THEME_PRESETS[themeKey].accent}
-                  onChange={(e) => {
-                    setCustomAccent(e.target.value);
-                    localStorage.setItem(THEME_KEY, JSON.stringify({ custom: e.target.value }));
-                  }}
-                  className="color-picker"
-                />
-                <span className="color-hex">{customAccent || THEME_PRESETS[themeKey].accent}</span>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="playlist-inputs">
           <div className="input-group">
-            <input type="text" placeholder="Ссылка или текст плейлиста..." value={input}
+            <input
+              type="text"
+              placeholder="Ссылка или текст плейлиста..."
+              value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLoad()}
             />
-            <button onClick={handleLoad} disabled={loading}>{loading ? "⏳" : "➜"}</button>
+            <button onClick={handleLoad} disabled={loading}>
+              {loading ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
+                </svg>
+              ) : (
+                <IconArrow />
+              )}
+            </button>
           </div>
         </div>
 
-        {error && <div className="error">{error}</div>}
+        {error && !currentChannel && <div className="error">{error}</div>}
 
         {playlist ? (
           <>
             <div className="toolbar">
-              <button className="toolbar-back" onClick={closePlaylist} title="Назад">←</button>
+              <button className="toolbar-back" onClick={closePlaylist} title="Назад">
+                <IconBack />
+              </button>
               <span className="toolbar-title">{playlist.name}</span>
               <span className="toolbar-count">{filteredChannels.length}</span>
             </div>
+
             <div className="search-bar">
-              <input type="text" placeholder="Поиск..." value={search}
+              <span className="search-bar-icon"><IconSearch /></span>
+              <input
+                type="text"
+                placeholder="Поиск..."
+                value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              {search && <button className="search-clear" onClick={() => setSearch("")}>×</button>}
+              {search && (
+                <button className="search-clear" onClick={() => setSearch("")}>
+                  <IconClose />
+                </button>
+              )}
             </div>
+
             {!showFavorites && (
               <div className="group-tabs">
                 {groups.map((g) => (
-                  <button key={g} className={`group-tab ${selectedGroup === g ? "active" : ""}`}
+                  <button
+                    key={g}
+                    className={`group-tab ${selectedGroup === g ? "active" : ""}`}
                     onClick={() => setSelectedGroup(g)}
-                  >{g === "all" ? "Все" : g}</button>
+                  >
+                    {g === "all" ? "Все" : g}
+                  </button>
                 ))}
               </div>
             )}
+
             {favorites.length > 0 && (
-              <button className={`favorites-toggle ${showFavorites ? "active" : ""}`}
+              <button
+                className={`favorites-toggle ${showFavorites ? "active" : ""}`}
                 onClick={() => setShowFavorites(!showFavorites)}
-              >★ {showFavorites ? "Все каналы" : `Избранное (${favorites.length})`}</button>
+              >
+                <IconStar filled={showFavorites} />
+                {showFavorites ? "Все каналы" : `Избранное · ${favorites.length}`}
+              </button>
             )}
+
             <div className="channel-list">
               {filteredChannels.length === 0 && (
-                <div className="empty-channels" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 13 }}>
                   {search ? "Ничего не найдено" : "Нет каналов"}
                 </div>
               )}
               {filteredChannels.map((ch, i) => (
-                <div key={i} className={`channel-item ${currentChannel?.url === ch.url ? "playing" : ""}`}
+                <div
+                  key={i}
+                  className={`channel-item ${currentChannel?.url === ch.url ? "playing" : ""}`}
                   onClick={() => playChannel(ch)}
                 >
                   <div className="channel-logo">
-                    {ch.logo ? <img src={ch.logo} alt="" /> : <div className="channel-placeholder">{ch.name.charAt(0).toUpperCase()}</div>}
+                    {ch.logo ? (
+                      <img src={ch.logo} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    ) : (
+                      <div className="channel-placeholder">{ch.name.charAt(0).toUpperCase()}</div>
+                    )}
                   </div>
                   <div className="channel-info">
                     <div className="channel-name">{ch.name}</div>
                     {ch.group && <div className="channel-group">{ch.group}</div>}
                   </div>
-                  <button className={`channel-fav ${isFavorite(ch.url) ? "active" : ""}`}
+                  <button
+                    className={`channel-fav ${isFavorite(ch.url) ? "active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFavorite(ch.url); }}
-                  >{isFavorite(ch.url) ? "★" : "☆"}</button>
+                  >
+                    <IconStar filled={isFavorite(ch.url)} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -589,43 +656,35 @@ function App() {
                 <div className="playlist-list-header">Мои плейлисты</div>
                 {savedPlaylists.map((p, i) => (
                   <div key={i} className="playlist-list-item" onClick={() => loadPlaylist(p)}>
-                    <span className="playlist-list-icon">📺</span>
+                    <div className="playlist-list-icon"><IconTV /></div>
                     <div className="playlist-list-body">
-                      {renamingPlaylist === p.name ? (
-                        <input ref={renameInputRef} className="rename-input" value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onBlur={confirmRename}
-                          onKeyDown={(e) => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setRenamingPlaylist(null); }}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <>
-                          <div className="playlist-list-name">{p.name}</div>
-                          <div className="playlist-list-count">{p.channels.length} каналов</div>
-                        </>
-                      )}
+                      <div className="playlist-list-name">{p.name}</div>
+                      <div className="playlist-list-count">{p.channels.length} каналов</div>
                     </div>
-                    <div className="playlist-list-actions">
-                      <button className="playlist-list-rename"
-                        onClick={(e) => { e.stopPropagation(); startRename(p.name); }} title="Переименовать">✎</button>
-                      <button className="playlist-list-del"
-                        onClick={(e) => { e.stopPropagation(); deleteSavedPlaylist(p.name); }} title="Удалить">×</button>
-                    </div>
+                    <button
+                      className="playlist-list-del"
+                      onClick={(e) => { e.stopPropagation(); deleteSavedPlaylist(p.name); }}
+                    >
+                      <IconClose />
+                    </button>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="empty-saved">
-                <div className="empty-saved-icon">📂</div>
+                <div className="empty-saved-icon"><IconFolder /></div>
                 <p>Нет сохранённых плейлистов</p>
                 <p className="empty-saved-hint">Вставьте ссылку выше — сохранится автоматически</p>
               </div>
             )}
+
             {history.length > 0 && (
               <div className="history-section">
                 <div className="history-header">Недавние</div>
                 {history.slice(0, 10).map((ch, i) => (
-                  <div key={i} className="history-item" onClick={() => playChannel(ch)}><span>{ch.name}</span></div>
+                  <div key={i} className="history-item" onClick={() => playChannel(ch)}>
+                    {ch.name}
+                  </div>
                 ))}
               </div>
             )}
@@ -633,35 +692,71 @@ function App() {
         )}
       </aside>
 
-      <main className="player-area" onMouseMove={showControlsTemporarily} onClick={showControlsTemporarily}>
+      <main
+        className="player-area"
+        onMouseMove={showControlsTemporarily}
+        onClick={showControlsTemporarily}
+      >
         {currentChannel ? (
           <>
-            <div className="player-topbar" style={{ opacity: showControls || !playing ? 1 : 0 }}>
-              <div className="channel-info-bar">
+            <div className="player-ambient" />
+
+            <div className={`player-topbar ${showControls || !playing ? "visible" : ""}`}>
+              <div className="glass-pill channel-info-bar">
                 <div className="channel-logo">
-                  {currentChannel.logo ? <img src={currentChannel.logo} alt="" /> : <div className="channel-placeholder">{currentChannel.name.charAt(0).toUpperCase()}</div>}
+                  {currentChannel.logo ? (
+                    <img
+                      src={currentChannel.logo}
+                      alt=""
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  ) : (
+                    <div className="channel-placeholder">{currentChannel.name.charAt(0).toUpperCase()}</div>
+                  )}
                 </div>
                 <div className="channel-meta">
                   <div className="playing-label">Сейчас</div>
                   <div className="playing-name">{currentChannel.name}</div>
                 </div>
               </div>
-              <div className="topbar-actions">
-                <button className={`ctrl-btn debug-btn ${showDebug ? "active" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }} title="Отладка">🐛</button>
-                <button className={`player-fav ${isFavorite(currentChannel.url) ? "active" : ""}`}
-                  onClick={() => toggleFavorite(currentChannel.url)}
-                >{isFavorite(currentChannel.url) ? "★" : "☆"}</button>
+
+              <div className="glass-pill topbar-actions">
+                <button
+                  className={`ctrl-btn debug-btn ${showDebug ? "active" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }}
+                  title="Отладка"
+                >
+                  <IconBug />
+                </button>
+                <button
+                  className={`player-fav ${isFavorite(currentChannel.url) ? "active" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); toggleFavorite(currentChannel.url); }}
+                >
+                  <IconStar filled={isFavorite(currentChannel.url)} />
+                </button>
               </div>
             </div>
 
             <div className="video-wrapper">
-              <video ref={videoRef} autoPlay className="video-element"
-                onTimeUpdate={handleTimeUpdate} onPlay={handleVideoPlay} onPause={handleVideoPause}
-                onWaiting={handleWaiting} onCanPlay={handleCanPlay} onError={handleVideoError}
-                onStalled={handleStalled} onDurationChange={handleTimeUpdate} onClick={togglePlay}
+              <video
+                ref={videoRef}
+                autoPlay
+                className="video-element"
+                onTimeUpdate={handleTimeUpdate}
+                onPlay={handleVideoPlay}
+                onPause={handleVideoPause}
+                onWaiting={handleWaiting}
+                onCanPlay={handleCanPlay}
+                onError={handleVideoError}
+                onStalled={handleStalled}
+                onDurationChange={handleTimeUpdate}
+                onClick={togglePlay}
               />
-              {buffering && <div className="buffering-indicator"><div className="buffering-spinner" /></div>}
+              {buffering && (
+                <div className="buffering-indicator">
+                  <div className="buffering-spinner" />
+                </div>
+              )}
               {error && <div className="player-error">{error}</div>}
             </div>
 
@@ -669,41 +764,74 @@ function App() {
               <div className="debug-panel" onClick={(e) => e.stopPropagation()}>
                 <div className="debug-header">Отладка</div>
                 <div className="debug-logs">
-                  {debugLog.map((entry, i) => <div key={i} className="debug-entry">{entry}</div>)}
+                  {debugLog.map((entry, i) => (
+                    <div key={i} className="debug-entry">{entry}</div>
+                  ))}
                 </div>
               </div>
             )}
 
             <div className={`player-controls ${showControls || !playing ? "visible" : ""}`}>
-              <div className="progress-wrap" ref={progressRef} onClick={handleProgressClick}>
-                <div className="progress-track">
-                  <div className="progress-fill" style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }} />
+              <div className="glass-pill controls-pill">
+                <div className="progress-wrap" ref={progressRef} onClick={handleProgressClick}>
+                  <div className="progress-track">
+                    <div
+                      className="progress-fill"
+                      style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="controls-row">
-                <button className="ctrl-btn play-btn" onClick={togglePlay}>{playing ? "⏸" : "▶"}</button>
-                <div className="volume-group">
-                  <button className="ctrl-btn" onClick={toggleMute}>{muted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}</button>
-                  <input type="range" min="0" max="1" step="0.01" value={muted ? 0 : volume} onChange={handleVolumeChange} className="volume-slider" />
+
+                <div className="controls-row">
+                  <button className="ctrl-btn play-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }}>
+                    {playing ? <IconPause /> : <IconPlay />}
+                  </button>
+
+                  <div className="volume-group">
+                    <button className="ctrl-btn" onClick={toggleMute}><VolumeIcon /></button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={muted ? 0 : volume}
+                      onChange={handleVolumeChange}
+                      className="volume-slider"
+                    />
+                  </div>
+
+                  <span className="time-display">
+                    {formatTime(currentTime)} / {formatTime(duration)}
+                  </span>
+
+                  <button className="ctrl-btn" onClick={(e) => { e.stopPropagation(); handleFullscreen(); }}>
+                    <IconFullscreen />
+                  </button>
                 </div>
-                <span className="time-display">{formatTime(currentTime)} / {formatTime(duration)}</span>
-                <button className="ctrl-btn fs-btn" onClick={handleFullscreen}>⛶</button>
               </div>
             </div>
           </>
         ) : (
-          <div className="empty-hero">
-            <div className="hero-icon">⏺</div>
-            <h1 className="hero-title">Aurora Player</h1>
-            <p className="hero-desc">Вставьте ссылку на M3U плейлист или прямой поток</p>
-            <div className="hero-input">
-              <input type="text" placeholder="https://example.com/playlist.m3u8" value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLoad()}
-              />
-              <button onClick={handleLoad} disabled={loading}>{loading ? "⏳" : "Смотреть"}</button>
+          <>
+            <div className="player-ambient" />
+            <div className="empty-hero">
+              <div className="hero-icon"><IconLogo /></div>
+              <h1 className="hero-title">Aurora Player</h1>
+              <p className="hero-desc">Вставьте ссылку на M3U плейлист или прямой поток</p>
+              <div className="hero-input">
+                <input
+                  type="text"
+                  placeholder="https://example.com/playlist.m3u8"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLoad()}
+                />
+                <button onClick={handleLoad} disabled={loading}>
+                  {loading ? "Загрузка..." : "Смотреть"}
+                </button>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </main>
     </div>
