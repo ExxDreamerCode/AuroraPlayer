@@ -642,10 +642,43 @@ function App() {
             <div className="logo-icon"><IconLogo /></div>
             <span className="logo-text">Aurora</span>
           </div>
+          <button className="sidebar-toggle" onClick={() => setShowSettings(!showSettings)} title="Настройки">
+            <IconSettings />
+          </button>
           <button className="sidebar-toggle" onClick={() => setSidebarOpen(false)} title="Скрыть панель">
             <IconSidebarToggle open={true} />
           </button>
         </div>
+
+        {showSettings && (
+          <div className="settings-panel-inline" onClick={(e) => e.stopPropagation()}>
+            <div className="settings-header">Тема оформления</div>
+            <div className="settings-themes">
+              {THEMES.map((t) => (
+                <button
+                  key={t.name}
+                  className={`theme-btn ${currentTheme === t.name ? "active" : ""}`}
+                  onClick={() => applyTheme(t.name, t.name === "custom" ? customColor : undefined)}
+                >
+                  <span className="theme-swatch" style={{ background: t.name === "custom" ? customColor : t.accent }} />
+                  <span className="theme-label">{t.label}</span>
+                </button>
+              ))}
+              {currentTheme === "custom" && (
+                <div className="custom-color-row">
+                  <input
+                    type="color"
+                    className="color-picker"
+                    value={customColor}
+                    onChange={(e) => applyTheme("custom", e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span className="color-hex">{customColor}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="playlist-inputs">
           <div className="input-group">
@@ -854,13 +887,6 @@ function App() {
 
               <div className="glass-pill topbar-actions">
                 <button
-                  className={`ctrl-btn settings-btn ${showSettings ? "active" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
-                  title="Настройки"
-                >
-                  <IconSettings />
-                </button>
-                <button
                   className={`ctrl-btn debug-btn ${showDebug ? "active" : ""}`}
                   onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }}
                   title="Отладка"
@@ -898,36 +924,6 @@ function App() {
               )}
               {error && <div className="player-error">{error}</div>}
             </div>
-
-            {showSettings && (
-              <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
-                <div className="settings-header">Тема оформления</div>
-                <div className="settings-themes">
-                  {THEMES.map((t) => (
-                    <button
-                      key={t.name}
-                      className={`theme-btn ${currentTheme === t.name ? "active" : ""}`}
-                      onClick={() => applyTheme(t.name, t.name === "custom" ? customColor : undefined)}
-                    >
-                      <span className="theme-swatch" style={{ background: t.name === "custom" ? customColor : t.accent }} />
-                      <span className="theme-label">{t.label}</span>
-                    </button>
-                  ))}
-                  {currentTheme === "custom" && (
-                    <div className="custom-color-row">
-                      <input
-                        type="color"
-                        className="color-picker"
-                        value={customColor}
-                        onChange={(e) => applyTheme("custom", e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <span className="color-hex">{customColor}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {showDebug && (
               <div className="debug-panel" onClick={(e) => e.stopPropagation()}>

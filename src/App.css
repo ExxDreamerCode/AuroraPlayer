@@ -1051,7 +1051,12 @@ html, body, #root {
   background: var(--accent-dim) !important;
 }
 
-/* Settings panel */
+.settings-panel-inline {
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--glass);
+  overflow: hidden;
+}
+
 .settings-panel {
   position: absolute;
   top: 70px;
@@ -1197,7 +1202,6 @@ html, body, #root {
   user-select: none;
 }
 
-/* Buffering */
 .buffering-indicator {
   position: absolute;
   top: 50%;
@@ -1220,7 +1224,6 @@ html, body, #root {
   to { transform: rotate(360deg); }
 }
 
-/* Error */
 .player-error {
   position: absolute;
   top: 50%;
@@ -1240,7 +1243,6 @@ html, body, #root {
   line-height: 1.4;
 }
 
-/* Debug panel */
 .debug-panel {
   position: absolute;
   bottom: 90px;
@@ -1288,7 +1290,6 @@ html, body, #root {
   word-break: break-all;
 }
 
-/* Hero (empty state) */
 .empty-hero {
   flex: 1;
   display: flex;
