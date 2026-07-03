@@ -859,6 +859,29 @@ html, body, #root {
   padding: 5px;
 }
 
+.topbar-nav {
+  gap: 0;
+  padding: 4px;
+}
+
+.topbar-nav .ctrl-btn {
+  width: 30px;
+  height: 30px;
+}
+
+.topbar-nav .ctrl-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.topbar-nav-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
 .player-controls {
   position: absolute;
   bottom: 20px;
@@ -995,6 +1018,22 @@ html, body, #root {
 
 .ctrl-btn.play-btn:hover {
   background: #fff;
+}
+
+.ctrl-skip {
+  width: 28px !important;
+  height: 28px !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.ctrl-skip svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.ctrl-skip:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .player-fav {

@@ -102,6 +102,16 @@ const IconBack = () => (
     <path d="M15 18l-6-6 6-6" />
   </svg>
 );
+const IconPrev = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+  </svg>
+);
+const IconNext = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 6h-2v12h2zm-3.5 6l-8.5 6V6z" />
+  </svg>
+);
 const IconSearch = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="11" cy="11" r="7" />
@@ -616,6 +626,30 @@ function App() {
     [stopPlayback, addToHistory, clearBufferingTimer, clearLoadingTimer, clearStallRecovery, clearManifestTimeout, buffering, addDebug]
   );
 
+  const sourceChannels = showFavorites
+    ? playlist?.channels.filter((c) => favorites.includes(c.url)) ?? []
+    : selectedGroup === "all"
+    ? playlist?.channels ?? []
+    : playlist?.channels.filter((c) => c.group === selectedGroup) ?? [];
+
+  const filteredChannels = search
+    ? sourceChannels.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+    : sourceChannels;
+
+  const goToPrevChannel = useCallback(() => {
+    if (!currentChannel || !playlist) return;
+    const channels = filteredChannels;
+    const idx = channels.findIndex((c) => c.url === currentChannel.url);
+    if (idx > 0) playChannel(channels[idx - 1]);
+  }, [currentChannel, filteredChannels, playChannel]);
+
+  const goToNextChannel = useCallback(() => {
+    if (!currentChannel || !playlist) return;
+    const channels = filteredChannels;
+    const idx = channels.findIndex((c) => c.url === currentChannel.url);
+    if (idx >= 0 && idx < channels.length - 1) playChannel(channels[idx + 1]);
+  }, [currentChannel, filteredChannels, playChannel]);
+
   const loadPlaylist = useCallback(
     (result: Playlist) => {
       setPlaylist(result);
@@ -686,16 +720,6 @@ function App() {
     setRenamingPlaylist(null);
     setRenameInput("");
   };
-
-  const sourceChannels = showFavorites
-    ? playlist?.channels.filter((c) => favorites.includes(c.url)) ?? []
-    : selectedGroup === "all"
-    ? playlist?.channels ?? []
-    : playlist?.channels.filter((c) => c.group === selectedGroup) ?? [];
-
-  const filteredChannels = search
-    ? sourceChannels.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-    : sourceChannels;
 
   const VolumeIcon = muted || volume === 0 ? IconVolumeMute : volume < 0.5 ? IconVolumeLow : IconVolume2;
 
@@ -947,7 +971,22 @@ function App() {
                 </div>
               </div>
 
-              <div className="glass-pill topbar-actions">
+              <div className="glass-pill topbar-actions topbar-nav">
+                <button
+                  className="ctrl-btn"
+                  onClick={(e) => { e.stopPropagation(); goToPrevChannel(); }}
+                  title="Предыдущий канал"
+                >
+                  <IconPrev />
+                </button>
+                <button
+                  className="ctrl-btn"
+                  onClick={(e) => { e.stopPropagation(); goToNextChannel(); }}
+                  title="Следующий канал"
+                >
+                  <IconNext />
+                </button>
+                <span className="topbar-nav-divider" />
                 <button
                   className={`ctrl-btn fit-btn`}
                   onClick={(e) => {
@@ -1022,8 +1061,14 @@ function App() {
                 </div>
 
                 <div className="controls-row">
+                  <button className="ctrl-btn ctrl-skip" onClick={(e) => { e.stopPropagation(); goToPrevChannel(); }} title="Предыдущий">
+                    <IconPrev />
+                  </button>
                   <button className="ctrl-btn play-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }}>
                     {playing ? <IconPause /> : <IconPlay />}
+                  </button>
+                  <button className="ctrl-btn ctrl-skip" onClick={(e) => { e.stopPropagation(); goToNextChannel(); }} title="Следующий">
+                    <IconNext />
                   </button>
 
                   <div className="volume-group">
