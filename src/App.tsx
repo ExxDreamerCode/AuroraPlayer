@@ -342,7 +342,6 @@ function App() {
     if (v) {
       v.pause();
       v.removeAttribute("src");
-      v.load();
     }
     setPlaying(false);
     setCurrentTime(0);
@@ -971,22 +970,7 @@ function App() {
                 </div>
               </div>
 
-              <div className="glass-pill topbar-actions topbar-nav">
-                <button
-                  className="ctrl-btn"
-                  onClick={(e) => { e.stopPropagation(); goToPrevChannel(); }}
-                  title="Предыдущий канал"
-                >
-                  <IconPrev />
-                </button>
-                <button
-                  className="ctrl-btn"
-                  onClick={(e) => { e.stopPropagation(); goToNextChannel(); }}
-                  title="Следующий канал"
-                >
-                  <IconNext />
-                </button>
-                <span className="topbar-nav-divider" />
+              <div className="glass-pill topbar-actions">
                 <button
                   className={`ctrl-btn fit-btn`}
                   onClick={(e) => {
