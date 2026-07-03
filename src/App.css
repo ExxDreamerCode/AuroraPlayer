@@ -774,7 +774,6 @@ html, body, #root {
 .video-element {
   width: 100%;
   height: 100%;
-  object-fit: contain;
 }
 
 .player-topbar {
@@ -1034,6 +1033,19 @@ html, body, #root {
 }
 
 .settings-btn.active {
+  color: var(--accent) !important;
+  background: var(--accent-dim) !important;
+}
+
+.fit-btn {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.fit-btn:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.fit-btn.active {
   color: var(--accent) !important;
   background: var(--accent-dim) !important;
 }

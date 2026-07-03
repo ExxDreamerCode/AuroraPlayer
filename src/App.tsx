@@ -34,6 +34,7 @@ const THEMES: Theme[] = [
 ];
 
 const CUSTOM_COLOR_KEY = "aurora-player-custom-color";
+const FIT_MODE_KEY = "aurora-player-fit-mode";
 
 const THEME_KEY = "aurora-player-theme";
 
@@ -83,6 +84,19 @@ const IconFullscreen = () => (
     <path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M21 16v3a2 2 0 01-2 2h-3M3 16v3a2 2 0 002 2h3" />
   </svg>
 );
+const IconPictureInPicture = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <rect x="10" y="10" width="10" height="7" rx="1" fill="currentColor" fillOpacity="0.2" />
+  </svg>
+);
+const IconPictureInPictureExit = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="M10 10h10v7H10z" fill="currentColor" fillOpacity="0.2" />
+    <path d="M10 10l-3-3M7 10h3V7" />
+  </svg>
+);
 const IconBack = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M15 18l-6-6 6-6" />
@@ -115,6 +129,24 @@ const IconBug = () => (
     <path d="M8 2l1.9 1.9M14.1 2L16 3.9M9 9h6M9 12h6M9 15h3" />
     <path d="M4 8h3M4 12h2M4 16h3M17 8h3M18 12h2M17 16h3" />
     <rect x="8" y="6" width="8" height="14" rx="3" />
+  </svg>
+);
+const IconFitContain = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <rect x="6" y="6" width="12" height="12" rx="1" strokeDasharray="2 2" />
+  </svg>
+);
+const IconFitCover = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <rect x="1" y="4" width="22" height="16" rx="1" strokeDasharray="2 2" />
+  </svg>
+);
+const IconFitFill = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <rect x="3" y="3" width="18" height="18" rx="1" strokeDasharray="2 2" />
   </svg>
 );
 const IconFolder = () => (
@@ -171,6 +203,11 @@ function App() {
   const [showControls, setShowControls] = useState(false);
   const [debugLog, setDebugLog] = useState<string[]>([]);
   const [showDebug, setShowDebug] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPip, setIsPip] = useState(false);
+  const [fitMode, setFitMode] = useState<"contain" | "cover" | "fill">(() => {
+    try { return (localStorage.getItem(FIT_MODE_KEY) as "contain" | "cover" | "fill") || "cover"; } catch { return "cover"; }
+  });
   const [renamingPlaylist, setRenamingPlaylist] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -232,6 +269,26 @@ function App() {
       const h = localStorage.getItem(HISTORY_KEY);
       if (h) setHistory(JSON.parse(h));
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(FIT_MODE_KEY, fitMode);
+  }, [fitMode]);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsPip(!!document.pictureInPictureElement);
+    document.addEventListener("enterpictureinpicture", handler);
+    document.addEventListener("leavepictureinpicture", handler);
+    return () => {
+      document.removeEventListener("enterpictureinpicture", handler);
+      document.removeEventListener("leavepictureinpicture", handler);
+    };
   }, []);
 
   useEffect(() => () => hlsRef.current?.destroy(), []);
@@ -323,6 +380,20 @@ function App() {
     if (document.fullscreenElement) document.exitFullscreen();
     else el.requestFullscreen();
   }, []);
+
+  const handlePictureInPicture = useCallback(async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (document.pictureInPictureEnabled) {
+        await v.requestPictureInPicture();
+      }
+    } catch (err: any) {
+      addDebug(`⚠️ PiP: ${err.message}`);
+    }
+  }, [addDebug]);
 
   const handleTimeUpdate = useCallback(() => {
     const v = videoRef.current;
@@ -878,6 +949,16 @@ function App() {
 
               <div className="glass-pill topbar-actions">
                 <button
+                  className={`ctrl-btn fit-btn`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFitMode(prev => prev === "contain" ? "cover" : prev === "cover" ? "fill" : "contain");
+                  }}
+                  title={`Режим: ${fitMode === "contain" ? "Вписать" : fitMode === "cover" ? "Заполнить" : "Растянуть"}`}
+                >
+                  {fitMode === "contain" ? <IconFitContain /> : fitMode === "cover" ? <IconFitCover /> : <IconFitFill />}
+                </button>
+                <button
                   className={`ctrl-btn debug-btn ${showDebug ? "active" : ""}`}
                   onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }}
                   title="Отладка"
@@ -898,6 +979,8 @@ function App() {
                 ref={videoRef}
                 autoPlay
                 className="video-element"
+                style={{ objectFit: isFullscreen ? fitMode : "contain" }}
+                disablePictureInPicture={false}
                 onTimeUpdate={handleTimeUpdate}
                 onPlay={handleVideoPlay}
                 onPause={handleVideoPause}
@@ -960,6 +1043,13 @@ function App() {
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </span>
 
+                  <button
+                    className="ctrl-btn"
+                    onClick={(e) => { e.stopPropagation(); handlePictureInPicture(); }}
+                    title={isPip ? "Выйти из PiP" : "Картинка в картинке"}
+                  >
+                    {isPip ? <IconPictureInPictureExit /> : <IconPictureInPicture />}
+                  </button>
                   <button className="ctrl-btn" onClick={(e) => { e.stopPropagation(); handleFullscreen(); }}>
                     <IconFullscreen />
                   </button>
