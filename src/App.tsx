@@ -134,6 +134,12 @@ const IconStar = ({ filled }: { filled: boolean }) => (
     <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8L5.7 21l1.7-7L2 9.2l7.1-.6L12 2z" />
   </svg>
 );
+const IconInfo = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 16v-4M12 8h.01" />
+  </svg>
+);
 const IconBug = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M8 2l1.9 1.9M14.1 2L16 3.9M9 9h6M9 12h6M9 15h3" />
@@ -213,6 +219,10 @@ function App() {
   const [showControls, setShowControls] = useState(false);
   const [debugLog, setDebugLog] = useState<string[]>([]);
   const [showDebug, setShowDebug] = useState(false);
+  const [showChannelInfo, setShowChannelInfo] = useState(false);
+  const [hlsLevels, setHlsLevels] = useState<{ height: number; width: number; bitrate: number; codecs: string }[]>([]);
+  const [videoMeta, setVideoMeta] = useState<{ videoWidth: number; videoHeight: number; videoCodec: string } | null>(null);
+  const [currentLevel, setCurrentLevel] = useState<{ height: number; bitrate: number } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPip, setIsPip] = useState(false);
   const [fitMode, setFitMode] = useState<"contain" | "cover" | "fill">(() => {
@@ -228,6 +238,7 @@ function App() {
   const [customColor, setCustomColor] = useState<string>(() => {
     try { return localStorage.getItem(CUSTOM_COLOR_KEY) || "#0a84ff"; } catch { return "#0a84ff"; }
   });
+  const [playlistAnimKey, setPlaylistAnimKey] = useState(0);
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -409,6 +420,17 @@ function App() {
     if (v) { setCurrentTime(v.currentTime); setDuration(v.duration || 0); }
   }, []);
 
+  const handleLoadedMeta = useCallback(() => {
+    const v = videoRef.current;
+    if (v) {
+      setVideoMeta({
+        videoWidth: v.videoWidth,
+        videoHeight: v.videoHeight,
+        videoCodec: typeof v.getVideoPlaybackQuality === "function" ? "HLS/Web" : "N/A",
+      });
+    }
+  }, []);
+
   const handleVideoPlay = useCallback(() => { addDebug("▶ Воспроизведение"); setPlaying(true); setError(null); }, [addDebug]);
   const handleVideoPause = useCallback(() => { setPlaying(false); }, []);
 
@@ -578,16 +600,27 @@ function App() {
         clearManifestTimeout();
         if (hls.levels.length > 0) {
           addDebug(`📋 Манифест, уровней: ${hls.levels.length}`);
+          const levels = hls.levels.map(l => ({
+            height: l.height,
+            width: l.width,
+            bitrate: l.bitrate,
+            codecs: l.audioCodec || l.videoCodec || "N/A",
+          }));
+          setHlsLevels(levels);
           hls.nextLevel = hls.levels.length - 1;
         } else {
           addDebug("📋 Манифест (без уровней)");
+          setHlsLevels([]);
         }
         v.play().catch((err: any) => { addDebug(`❌ Play: ${err.message}`); });
       });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_e, data) => {
         const level = hls.levels[data.level];
-        if (level) addDebug(`📊 ${level.height}p / ${(level.bitrate / 1000).toFixed(0)} kbps`);
+        if (level) {
+          addDebug(`📊 ${level.height}p / ${(level.bitrate / 1000).toFixed(0)} kbps`);
+          setCurrentLevel({ height: level.height, bitrate: level.bitrate });
+        }
       });
 
       hls.on(Hls.Events.FRAG_LOADING, () => { clearBufferingTimer(); });
@@ -658,6 +691,7 @@ function App() {
       setShowFavorites(false);
       setSearch("");
       autoSavePlaylist(result);
+      setPlaylistAnimKey(k => k + 1);
     },
     [autoSavePlaylist]
   );
@@ -807,7 +841,7 @@ function App() {
               </button>
             )}
 
-            <div className="channel-list">
+            <div className="channel-list" key={playlistAnimKey}>
               {filteredChannels.length === 0 && (
                 <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 13 }}>
                   {search ? "Ничего не найдено" : "Нет каналов"}
@@ -982,6 +1016,13 @@ function App() {
                   {fitMode === "contain" ? <IconFitContain /> : fitMode === "cover" ? <IconFitCover /> : <IconFitFill />}
                 </button>
                 <button
+                  className={`ctrl-btn info-btn ${showChannelInfo ? "active" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); setShowChannelInfo(!showChannelInfo); }}
+                  title="Информация о канале"
+                >
+                  <IconInfo />
+                </button>
+                <button
                   className={`ctrl-btn debug-btn ${showDebug ? "active" : ""}`}
                   onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }}
                   title="Отладка"
@@ -1011,6 +1052,7 @@ function App() {
                 onCanPlay={handleCanPlay}
                 onError={handleVideoError}
                 onStalled={handleStalled}
+                onLoadedMetadata={handleLoadedMeta}
                 onDurationChange={handleTimeUpdate}
                 onClick={togglePlay}
               />
@@ -1029,6 +1071,56 @@ function App() {
                   {debugLog.map((entry, i) => (
                     <div key={i} className="debug-entry">{entry}</div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {showChannelInfo && currentChannel && (
+              <div className="channel-info-panel" onClick={(e) => e.stopPropagation()}>
+                <div className="channel-info-header">Информация о канале</div>
+                <div className="channel-info-body">
+                  <div className="channel-info-row">
+                    <span className="channel-info-label">Название</span>
+                    <span className="channel-info-value">{currentChannel.name}</span>
+                  </div>
+                  <div className="channel-info-row">
+                    <span className="channel-info-label">URL</span>
+                    <span className="channel-info-value channel-info-url">{currentChannel.url}</span>
+                  </div>
+                  {currentChannel.group && (
+                    <div className="channel-info-row">
+                      <span className="channel-info-label">Группа</span>
+                      <span className="channel-info-value">{currentChannel.group}</span>
+                    </div>
+                  )}
+                  {currentChannel.logo && (
+                    <div className="channel-info-row">
+                      <span className="channel-info-label">Логотип</span>
+                      <span className="channel-info-value channel-info-url">{currentChannel.logo}</span>
+                    </div>
+                  )}
+                  {videoMeta && (
+                    <div className="channel-info-row">
+                      <span className="channel-info-label">Разрешение</span>
+                      <span className="channel-info-value">{videoMeta.videoWidth}×{videoMeta.videoHeight}</span>
+                    </div>
+                  )}
+                  {currentLevel && (
+                    <div className="channel-info-row">
+                      <span className="channel-info-label">Текущий уровень</span>
+                      <span className="channel-info-value">{currentLevel.height}p / {(currentLevel.bitrate / 1000).toFixed(0)} kbps</span>
+                    </div>
+                  )}
+                  {hlsLevels.length > 0 && (
+                    <div className="channel-info-section">
+                      <div className="channel-info-label">Доступные уровни HLS</div>
+                      {hlsLevels.map((l, i) => (
+                        <div key={i} className="channel-info-level">
+                          {l.width}×{l.height} · {(l.bitrate / 1000).toFixed(0)} kbps
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
