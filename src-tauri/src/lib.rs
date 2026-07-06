@@ -1,4 +1,17 @@
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
+
+static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn http_client() -> &'static reqwest::Client {
+    HTTP_CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(4))
+            .pool_idle_timeout(std::time::Duration::from_secs(90))
+            .build()
+            .expect("failed to build shared reqwest client")
+    })
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Channel {
@@ -95,24 +108,25 @@ fn resolve_url(url: &str, base: Option<&str>) -> String {
 
 #[tauri::command]
 async fn check_url(url: String) -> Result<String, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(5))
-        .build()
-        .map_err(|e| e.to_string())?;
-
+    let client = http_client();
     let start = std::time::Instant::now();
 
-    match client.head(&url).send().await {
+    match client
+        .head(&url)
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+    {
         Ok(response) => {
             let elapsed = start.elapsed().as_millis();
-            let status = response.status().as_u16();
+            let status = response.status();
             let content_type = response
                 .headers()
                 .get("content-type")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("unknown")
                 .to_string();
-            Ok(format!("ok:{}:{}ms:{}", status, elapsed, content_type))
+            Ok(format!("ok:{}:{}ms:{}", status.as_u16(), elapsed, content_type))
         }
         Err(e) => {
             let elapsed = start.elapsed().as_millis();
@@ -136,12 +150,14 @@ async fn detect_and_load(input: String) -> Result<Playlist, String> {
     let trimmed = input.trim();
 
     if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| e.to_string())?;
+        let client = http_client();
 
-        let response = client.get(trimmed).send().await.map_err(|e| e.to_string())?;
+        let response = client
+            .get(trimmed)
+            .timeout(std::time::Duration::from_secs(30))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
         let text = response.text().await.map_err(|e| e.to_string())?;
 
         if text.contains("#EXTM3U") || text.contains("#EXTINF:") {

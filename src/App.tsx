@@ -50,6 +50,16 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, timeoutTag = "timeout_client"): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(timeoutTag)), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
 const IconPlay = () => (
   <svg viewBox="0 0 24 24" fill="currentColor">
     <path d="M8 5.14v14l11-7-11-7z" />
@@ -246,6 +256,11 @@ function App() {
   const hlsRef = useRef<Hls | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const debugLogRef = useRef<string[]>([]);
+  const currentChannelRef = useRef<Channel | null>(null);
+  const firstPlaySucceededRef = useRef(false);
+  const coldStartRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playChannelRef = useRef<(ch: Channel) => void>(() => {});
+  const mutedRef = useRef(false);
 
   const applyTheme = useCallback((themeName: string, color?: string) => {
     const theme = THEMES.find(t => t.name === themeName) || THEMES[0];
@@ -313,6 +328,10 @@ function App() {
   }, []);
 
   useEffect(() => () => hlsRef.current?.destroy(), []);
+
+  useEffect(() => {
+    mutedRef.current = muted;
+  }, [muted]);
 
   const savePlaylists = useCallback((p: Playlist[]) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
@@ -431,7 +450,13 @@ function App() {
     }
   }, []);
 
-  const handleVideoPlay = useCallback(() => { addDebug("▶ Воспроизведение"); setPlaying(true); setError(null); }, [addDebug]);
+  const handleVideoPlay = useCallback(() => {
+    addDebug("▶ Воспроизведение");
+    setPlaying(true);
+    setError(null);
+    const v = videoRef.current;
+    if (v) v.muted = mutedRef.current;
+  }, [addDebug]);
   const handleVideoPause = useCallback(() => { setPlaying(false); }, []);
 
   const bufferingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -443,6 +468,7 @@ function App() {
   const clearLoadingTimer = useCallback(() => { if (loadingTimerRef.current) { clearTimeout(loadingTimerRef.current); loadingTimerRef.current = null; } }, []);
   const clearStallRecovery = useCallback(() => { if (stallRecoveryRef.current) { clearTimeout(stallRecoveryRef.current); stallRecoveryRef.current = null; } }, []);
   const clearManifestTimeout = useCallback(() => { if (manifestTimeoutRef.current) { clearTimeout(manifestTimeoutRef.current); manifestTimeoutRef.current = null; } }, []);
+  const clearColdStartRetry = useCallback(() => { if (coldStartRetryTimerRef.current) { clearTimeout(coldStartRetryTimerRef.current); coldStartRetryTimerRef.current = null; } }, []);
 
   const handleWaiting = useCallback(() => {
     addDebug("⏳ Буферизация");
@@ -454,13 +480,28 @@ function App() {
       setBuffering(false);
       stopPlayback();
     }, 30000);
-  }, [clearBufferingTimer, stopPlayback, addDebug]);
+
+    if (!firstPlaySucceededRef.current) {
+      clearColdStartRetry();
+      coldStartRetryTimerRef.current = setTimeout(() => {
+        if (!firstPlaySucceededRef.current) {
+          firstPlaySucceededRef.current = true;
+          const ch = currentChannelRef.current;
+          if (ch) {
+            addDebug("🧊 Холодный старт: авто-перезапуск канала");
+            playChannelRef.current(ch);
+          }
+        }
+      }, 1000);
+    }
+  }, [clearBufferingTimer, clearColdStartRetry, stopPlayback, addDebug]);
 
   const handleCanPlay = useCallback(() => {
     addDebug("✅ CanPlay");
     setBuffering(false);
-    clearBufferingTimer(); clearLoadingTimer(); clearStallRecovery();
-  }, [clearBufferingTimer, clearLoadingTimer, clearStallRecovery, addDebug]);
+    firstPlaySucceededRef.current = true;
+    clearBufferingTimer(); clearLoadingTimer(); clearStallRecovery(); clearColdStartRetry();
+  }, [clearBufferingTimer, clearLoadingTimer, clearStallRecovery, clearColdStartRetry, addDebug]);
 
   const handleVideoError = useCallback(() => {
     addDebug("❌ Ошибка видео");
@@ -479,6 +520,26 @@ function App() {
     }, 5000);
   }, [buffering, clearStallRecovery, addDebug]);
 
+  const safePlay = useCallback(
+    (v: HTMLVideoElement, onFail?: (err: any) => void) => {
+      v.play().catch((err: any) => {
+        if (err?.name === "AbortError") {
+          addDebug("🔁 play() прерван (AbortError) — повтор");
+          setTimeout(() => {
+            v.play().catch((err2: any) => {
+              addDebug(`❌ Play (повтор не удался): ${err2?.message || err2}`);
+              onFail?.(err2);
+            });
+          }, 250);
+          return;
+        }
+        addDebug(`❌ Play: ${err?.message || err}`);
+        onFail?.(err);
+      });
+    },
+    [addDebug]
+  );
+
   const showControlsTemporarily = useCallback(() => {
     setShowControls(true);
     if (controlsTimer.current) clearTimeout(controlsTimer.current);
@@ -490,7 +551,8 @@ function App() {
       addDebug(`▶ Канал: ${channel.name}`);
       addDebug(`📎 URL: ${channel.url}`);
       stopPlayback();
-      clearBufferingTimer(); clearLoadingTimer(); clearStallRecovery(); clearManifestTimeout();
+      clearBufferingTimer(); clearLoadingTimer(); clearStallRecovery(); clearManifestTimeout(); clearColdStartRetry();
+      currentChannelRef.current = channel;
       setCurrentChannel(channel);
       addToHistory(channel);
       setShowControls(true);
@@ -499,8 +561,10 @@ function App() {
       const v = videoRef.current;
       if (!v) return;
 
+      v.muted = true;
+
       try {
-        const result = await invoke<string>("check_url", { url: channel.url });
+        const result = await withTimeout(invoke<string>("check_url", { url: channel.url }), 3000);
         addDebug(`📡 ${result}`);
         const parts = result.split(":");
         if (parts[0] === "fail") {
@@ -520,7 +584,11 @@ function App() {
         }
         addDebug("✅ URL доступен");
       } catch (err: any) {
-        addDebug(`⚠️ Проверка URL: ${err}`);
+        if (err?.message === "timeout_client") {
+          addDebug("⏱️ Проверка URL не ответила за 3с — продолжаем без неё");
+        } else {
+          addDebug(`⚠️ Проверка URL: ${err}`);
+        }
       }
 
       const isHls = channel.url.includes(".m3u8") || channel.url.includes(".m3u");
@@ -531,9 +599,8 @@ function App() {
         addDebug("📡 Прямой поток");
         v.src = channel.url;
         setTimeout(() => {
-          v.play().catch((err: any) => {
-            addDebug(`❌ ${err.message}`);
-            setError(`Ошибка: ${err.message || "неизвестная ошибка"}`);
+          safePlay(v, (err) => {
+            setError(`Ошибка: ${err?.message || "неизвестная ошибка"}`);
             setBuffering(false);
           });
         }, 200);
@@ -544,9 +611,8 @@ function App() {
         addDebug("⚠️ hls.js не поддерживается");
         v.src = channel.url;
         setTimeout(() => {
-          v.play().catch((err: any) => {
-            addDebug(`❌ ${err.message}`);
-            setError(`Ошибка: ${err.message || "ошибка"}`);
+          safePlay(v, (err) => {
+            setError(`Ошибка: ${err?.message || "ошибка"}`);
             setBuffering(false);
           });
         }, 200);
@@ -560,8 +626,8 @@ function App() {
         if (hlsRef.current) { try { hlsRef.current.destroy(); } catch {} hlsRef.current = null; }
         addDebug("🔄 Fallback на прямой src");
         v.src = channel.url;
-        v.play().catch((err: any) => {
-          addDebug(`❌ Fallback: ${err.message}`);
+        safePlay(v, (err) => {
+          addDebug(`❌ Fallback: ${err?.message || err}`);
           setError("Канал недоступен");
           setBuffering(false);
         });
@@ -612,7 +678,10 @@ function App() {
           addDebug("📋 Манифест (без уровней)");
           setHlsLevels([]);
         }
-        v.play().catch((err: any) => { addDebug(`❌ Play: ${err.message}`); });
+        safePlay(v, () => {
+          setError("Не удалось запустить воспроизведение");
+          setBuffering(false);
+        });
       });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_e, data) => {
@@ -646,8 +715,8 @@ function App() {
               try { hls.destroy(); } catch {}
               hlsRef.current = null;
               v.src = channel.url;
-              v.play().catch((err: any) => {
-                addDebug(`❌ Fallback: ${err.message}`);
+              safePlay(v, (err) => {
+                addDebug(`❌ Fallback: ${err?.message || err}`);
                 setError("Канал недоступен");
                 setBuffering(false);
               });
@@ -655,8 +724,12 @@ function App() {
         }
       });
     },
-    [stopPlayback, addToHistory, clearBufferingTimer, clearLoadingTimer, clearStallRecovery, clearManifestTimeout, buffering, addDebug]
+    [stopPlayback, addToHistory, clearBufferingTimer, clearLoadingTimer, clearStallRecovery, clearManifestTimeout, clearColdStartRetry, safePlay, buffering, addDebug]
   );
+
+  useEffect(() => {
+    playChannelRef.current = playChannel;
+  }, [playChannel]);
 
   const sourceChannels = showFavorites
     ? playlist?.channels.filter((c) => favorites.includes(c.url)) ?? []
@@ -1041,7 +1114,6 @@ function App() {
             <div className="video-wrapper">
               <video
                 ref={videoRef}
-                autoPlay
                 className="video-element"
                 style={{ objectFit: isFullscreen ? fitMode : "contain" }}
                 disablePictureInPicture={false}
