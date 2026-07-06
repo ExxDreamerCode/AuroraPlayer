@@ -470,6 +470,21 @@ function App() {
   const clearManifestTimeout = useCallback(() => { if (manifestTimeoutRef.current) { clearTimeout(manifestTimeoutRef.current); manifestTimeoutRef.current = null; } }, []);
   const clearColdStartRetry = useCallback(() => { if (coldStartRetryTimerRef.current) { clearTimeout(coldStartRetryTimerRef.current); coldStartRetryTimerRef.current = null; } }, []);
 
+  const armColdStartWatchdog = useCallback(() => {
+    if (firstPlaySucceededRef.current) return;
+    clearColdStartRetry();
+    coldStartRetryTimerRef.current = setTimeout(() => {
+      if (!firstPlaySucceededRef.current) {
+        firstPlaySucceededRef.current = true;
+        const ch = currentChannelRef.current;
+        if (ch) {
+          addDebug("🧊 Холодный старт: авто-перезапуск канала");
+          playChannelRef.current(ch);
+        }
+      }
+    }, 1500);
+  }, [clearColdStartRetry, addDebug]);
+
   const handleWaiting = useCallback(() => {
     addDebug("⏳ Буферизация");
     setBuffering(true);
@@ -481,20 +496,8 @@ function App() {
       stopPlayback();
     }, 30000);
 
-    if (!firstPlaySucceededRef.current) {
-      clearColdStartRetry();
-      coldStartRetryTimerRef.current = setTimeout(() => {
-        if (!firstPlaySucceededRef.current) {
-          firstPlaySucceededRef.current = true;
-          const ch = currentChannelRef.current;
-          if (ch) {
-            addDebug("🧊 Холодный старт: авто-перезапуск канала");
-            playChannelRef.current(ch);
-          }
-        }
-      }, 1000);
-    }
-  }, [clearBufferingTimer, clearColdStartRetry, stopPlayback, addDebug]);
+    armColdStartWatchdog();
+  }, [clearBufferingTimer, armColdStartWatchdog, stopPlayback, addDebug]);
 
   const handleCanPlay = useCallback(() => {
     addDebug("✅ CanPlay");
@@ -522,6 +525,7 @@ function App() {
 
   const safePlay = useCallback(
     (v: HTMLVideoElement, onFail?: (err: any) => void) => {
+      armColdStartWatchdog();
       v.play().catch((err: any) => {
         if (err?.name === "AbortError") {
           addDebug("🔁 play() прерван (AbortError) — повтор");
@@ -537,7 +541,7 @@ function App() {
         onFail?.(err);
       });
     },
-    [addDebug]
+    [addDebug, armColdStartWatchdog]
   );
 
   const showControlsTemporarily = useCallback(() => {
