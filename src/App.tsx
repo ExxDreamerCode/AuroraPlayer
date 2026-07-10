@@ -946,12 +946,13 @@ function App() {
                       {search ? "Ничего не найдено" : "Нет каналов"}
                     </div>
                   )}
-                  {filteredChannels.map((ch, i) => (
-                    <div
-                      key={i}
-                      className={`channel-item ${currentChannel?.url === ch.url ? "playing" : ""}`}
-                      onClick={() => playChannel(ch)}
-                    >
+              {filteredChannels.map((ch, i) => (
+                <div
+                  key={i}
+                  className={`channel-item ${currentChannel?.url === ch.url ? "playing" : ""}`}
+                  style={{ "--index": i } as React.CSSProperties}
+                  onClick={() => playChannel(ch)}
+                >
                       <div className="channel-logo">
                         {ch.logo ? (
                           <img src={ch.logo} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
