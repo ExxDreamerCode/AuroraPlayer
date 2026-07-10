@@ -248,6 +248,7 @@ function App() {
   const [customColor, setCustomColor] = useState<string>(() => {
     try { return localStorage.getItem(CUSTOM_COLOR_KEY) || "#0a84ff"; } catch { return "#0a84ff"; }
   });
+  const [showGroups, setShowGroups] = useState(false);
   const [playlistAnimKey, setPlaylistAnimKey] = useState(0);
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -892,63 +893,86 @@ function App() {
                   <IconClose />
                 </button>
               )}
+              {groups.length > 1 && (
+                <button
+                  className={`groups-toggle ${showGroups ? "active" : ""}`}
+                  onClick={() => setShowGroups(!showGroups)}
+                  title="Категории"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M8 6h10M4 12h16M6 18h12" />
+                  </svg>
+                </button>
+              )}
             </div>
 
-            {!showFavorites && (
-              <div className="group-tabs">
-                {groups.map((g) => (
-                  <button
-                    key={g}
-                    className={`group-tab ${selectedGroup === g ? "active" : ""}`}
-                    onClick={() => setSelectedGroup(g)}
-                  >
-                    {g === "all" ? "Все" : g}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {favorites.length > 0 && (
-              <button
-                className={`favorites-toggle ${showFavorites ? "active" : ""}`}
-                onClick={() => setShowFavorites(!showFavorites)}
-              >
-                <IconStar filled={showFavorites} />
-                {showFavorites ? "Все каналы" : `Избранное · ${favorites.length}`}
-              </button>
-            )}
-
-            <div className="channel-list" key={playlistAnimKey}>
-              {filteredChannels.length === 0 && (
-                <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 13 }}>
-                  {search ? "Ничего не найдено" : "Нет каналов"}
+            <div className="playlist-body">
+              {showGroups && (
+                <div className="group-panel">
+                  <div className="group-panel-header">
+                    <span>Категории</span>
+                    <button className="group-panel-close" onClick={() => setShowGroups(false)}>
+                      <IconClose />
+                    </button>
+                  </div>
+                  <div className="group-list">
+                    {groups.map((g) => (
+                      <button
+                        key={g}
+                        className={`group-tab ${selectedGroup === g ? "active" : ""}`}
+                        onClick={() => { setSelectedGroup(g); setShowFavorites(false); }}
+                      >
+                        {g === "all" ? "Все" : g}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-              {filteredChannels.map((ch, i) => (
-                <div
-                  key={i}
-                  className={`channel-item ${currentChannel?.url === ch.url ? "playing" : ""}`}
-                  onClick={() => playChannel(ch)}
-                >
-                  <div className="channel-logo">
-                    {ch.logo ? (
-                      <img src={ch.logo} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                    ) : (
-                      <div className="channel-placeholder">{ch.name.charAt(0).toUpperCase()}</div>
-                    )}
-                  </div>
-                  <div className="channel-info">
-                    <div className="channel-name">{ch.name}</div>
-                    {ch.group && <div className="channel-group">{ch.group}</div>}
-                  </div>
+
+              <div className="channel-area">
+                {favorites.length > 0 && (
                   <button
-                    className={`channel-fav ${isFavorite(ch.url) ? "active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFavorite(ch.url); }}
+                    className={`favorites-toggle ${showFavorites ? "active" : ""}`}
+                    onClick={() => setShowFavorites(!showFavorites)}
                   >
-                    <IconStar filled={isFavorite(ch.url)} />
+                    <IconStar filled={showFavorites} />
+                    {showFavorites ? "Все каналы" : `Избранное · ${favorites.length}`}
                   </button>
+                )}
+
+                <div className="channel-list" key={playlistAnimKey}>
+                  {filteredChannels.length === 0 && (
+                    <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 13 }}>
+                      {search ? "Ничего не найдено" : "Нет каналов"}
+                    </div>
+                  )}
+                  {filteredChannels.map((ch, i) => (
+                    <div
+                      key={i}
+                      className={`channel-item ${currentChannel?.url === ch.url ? "playing" : ""}`}
+                      onClick={() => playChannel(ch)}
+                    >
+                      <div className="channel-logo">
+                        {ch.logo ? (
+                          <img src={ch.logo} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        ) : (
+                          <div className="channel-placeholder">{ch.name.charAt(0).toUpperCase()}</div>
+                        )}
+                      </div>
+                      <div className="channel-info">
+                        <div className="channel-name">{ch.name}</div>
+                        {ch.group && <div className="channel-group">{ch.group}</div>}
+                      </div>
+                      <button
+                        className={`channel-fav ${isFavorite(ch.url) ? "active" : ""}`}
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(ch.url); }}
+                      >
+                        <IconStar filled={isFavorite(ch.url)} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           </>
         ) : (
@@ -1082,23 +1106,6 @@ function App() {
               </div>
 
               <div className="glass-pill topbar-actions">
-                <button
-                  className={`ctrl-btn fit-btn`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFitMode(prev => prev === "contain" ? "cover" : prev === "cover" ? "fill" : "contain");
-                  }}
-                  title={`Режим: ${fitMode === "contain" ? "Вписать" : fitMode === "cover" ? "Заполнить" : "Растянуть"}`}
-                >
-                  {fitMode === "contain" ? <IconFitContain /> : fitMode === "cover" ? <IconFitCover /> : <IconFitFill />}
-                </button>
-                <button
-                  className={`ctrl-btn info-btn ${showChannelInfo ? "active" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); setShowChannelInfo(!showChannelInfo); }}
-                  title="Информация о канале"
-                >
-                  <IconInfo />
-                </button>
                 <button
                   className={`ctrl-btn debug-btn ${showDebug ? "active" : ""}`}
                   onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }}
@@ -1236,6 +1243,14 @@ function App() {
                     />
                   </div>
 
+                  <button
+                    className={`ctrl-btn info-btn ${showChannelInfo ? "active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); setShowChannelInfo(!showChannelInfo); }}
+                    title="Информация о канале"
+                  >
+                    <IconInfo />
+                  </button>
+
                   <span className="time-display">
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </span>
@@ -1246,6 +1261,16 @@ function App() {
                     title={isPip ? "Выйти из PiP" : "Картинка в картинке"}
                   >
                     {isPip ? <IconPictureInPictureExit /> : <IconPictureInPicture />}
+                  </button>
+                  <button
+                    className={`ctrl-btn fit-btn`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFitMode(prev => prev === "contain" ? "cover" : prev === "cover" ? "fill" : "contain");
+                    }}
+                    title={`Режим: ${fitMode === "contain" ? "Вписать" : fitMode === "cover" ? "Заполнить" : "Растянуть"}`}
+                  >
+                    {fitMode === "contain" ? <IconFitContain /> : fitMode === "cover" ? <IconFitCover /> : <IconFitFill />}
                   </button>
                   <button className="ctrl-btn" onClick={(e) => { e.stopPropagation(); handleFullscreen(); }}>
                     <IconFullscreen />
