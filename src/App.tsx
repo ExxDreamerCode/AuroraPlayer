@@ -34,7 +34,6 @@ const THEMES: Theme[] = [
 ];
 
 const CUSTOM_COLOR_KEY = "aurora-player-custom-color";
-const FIT_MODE_KEY = "aurora-player-fit-mode";
 
 const THEME_KEY = "aurora-player-theme";
 
@@ -157,24 +156,6 @@ const IconBug = () => (
     <rect x="8" y="6" width="8" height="14" rx="3" />
   </svg>
 );
-const IconFitContain = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <rect x="6" y="6" width="12" height="12" rx="1" strokeDasharray="2 2" />
-  </svg>
-);
-const IconFitCover = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <rect x="1" y="4" width="22" height="16" rx="1" strokeDasharray="2 2" />
-  </svg>
-);
-const IconFitFill = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <rect x="3" y="3" width="18" height="18" rx="1" strokeDasharray="2 2" />
-  </svg>
-);
 const IconFolder = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
@@ -233,11 +214,7 @@ function App() {
   const [hlsLevels, setHlsLevels] = useState<{ height: number; width: number; bitrate: number; codecs: string }[]>([]);
   const [videoMeta, setVideoMeta] = useState<{ videoWidth: number; videoHeight: number; videoCodec: string } | null>(null);
   const [currentLevel, setCurrentLevel] = useState<{ height: number; bitrate: number } | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPip, setIsPip] = useState(false);
-  const [fitMode, setFitMode] = useState<"contain" | "cover" | "fill">(() => {
-    try { return (localStorage.getItem(FIT_MODE_KEY) as "contain" | "cover" | "fill") || "cover"; } catch { return "cover"; }
-  });
   const [renamingPlaylist, setRenamingPlaylist] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -306,16 +283,6 @@ function App() {
       const h = localStorage.getItem(HISTORY_KEY);
       if (h) setHistory(JSON.parse(h));
     } catch {}
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(FIT_MODE_KEY, fitMode);
-  }, [fitMode]);
-
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
   useEffect(() => {
@@ -1127,7 +1094,6 @@ function App() {
               <video
                 ref={videoRef}
                 className="video-element"
-                style={{ objectFit: isFullscreen ? fitMode : "contain" }}
                 disablePictureInPicture={false}
                 onTimeUpdate={handleTimeUpdate}
                 onPlay={handleVideoPlay}
@@ -1262,16 +1228,6 @@ function App() {
                     title={isPip ? "Выйти из PiP" : "Картинка в картинке"}
                   >
                     {isPip ? <IconPictureInPictureExit /> : <IconPictureInPicture />}
-                  </button>
-                  <button
-                    className={`ctrl-btn fit-btn`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFitMode(prev => prev === "contain" ? "cover" : prev === "cover" ? "fill" : "contain");
-                    }}
-                    title={`Режим: ${fitMode === "contain" ? "Вписать" : fitMode === "cover" ? "Заполнить" : "Растянуть"}`}
-                  >
-                    {fitMode === "contain" ? <IconFitContain /> : fitMode === "cover" ? <IconFitCover /> : <IconFitFill />}
                   </button>
                   <button className="ctrl-btn" onClick={(e) => { e.stopPropagation(); handleFullscreen(); }}>
                     <IconFullscreen />
