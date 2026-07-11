@@ -729,14 +729,18 @@ function App() {
 
   const loadPlaylist = useCallback(
     (result: Playlist) => {
-      setPlaylist(result);
+      setPlaylist((prev) => {
+        const isSamePlaylist =
+          prev?.name === result.name && prev.channels.length === result.channels.length;
+        if (!isSamePlaylist) setPlaylistAnimKey((k) => k + 1);
+        return result;
+      });
       const gs = ["all", ...new Set(result.channels.map((c) => c.group).filter(Boolean) as string[])];
       setGroups(gs);
       setSelectedGroup("all");
       setShowFavorites(false);
       setSearch("");
       autoSavePlaylist(result);
-      setPlaylistAnimKey(k => k + 1);
     },
     [autoSavePlaylist]
   );
