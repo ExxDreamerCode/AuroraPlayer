@@ -908,10 +908,6 @@ html, body, #root {
   transition: opacity 0.25s ease;
 }
 
-.player-area:hover .player-topbar {
-  opacity: 1;
-}
-
 .player-topbar.visible {
   opacity: 1;
 }
@@ -1012,12 +1008,6 @@ html, body, #root {
   transform: translateY(8px);
   transition: opacity 0.3s ease, transform 0.3s ease;
   pointer-events: none;
-}
-
-.player-area:hover .player-controls {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
 }
 
 .player-controls.visible {
@@ -1678,4 +1668,16 @@ html, body, #root {
 .channel-list > .channel-item {
   animation: fadeSlideIn 0.2s ease both;
   animation-delay: calc(min(var(--index, 0), 25) * 8ms);
+}
+
+.cursor-hidden {
+  cursor: none;
+}
+
+.cursor-hidden .player-topbar,
+.cursor-hidden .player-controls,
+.cursor-hidden .debug-panel,
+.cursor-hidden .channel-info-panel,
+.cursor-hidden .settings-panel {
+  cursor: auto;
 }

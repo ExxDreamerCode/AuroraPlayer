@@ -227,7 +227,9 @@ function App() {
   });
   const [showGroups, setShowGroups] = useState(false);
   const [playlistAnimKey, setPlaylistAnimKey] = useState(0);
-  const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const uiHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cursorHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -512,10 +514,17 @@ function App() {
     [addDebug, armColdStartWatchdog]
   );
 
-  const showControlsTemporarily = useCallback(() => {
+  const handleMouseActivity = useCallback(() => {
     setShowControls(true);
-    if (controlsTimer.current) clearTimeout(controlsTimer.current);
-    controlsTimer.current = setTimeout(() => { if (playing) setShowControls(false); }, 3000);
+    setCursorVisible(true);
+    if (uiHideTimerRef.current) clearTimeout(uiHideTimerRef.current);
+    if (cursorHideTimerRef.current) clearTimeout(cursorHideTimerRef.current);
+    uiHideTimerRef.current = setTimeout(() => {
+      if (playing) setShowControls(false);
+    }, 3000);
+    cursorHideTimerRef.current = setTimeout(() => {
+      if (playing) setCursorVisible(false);
+    }, 4000);
   }, [playing]);
 
   const playChannel = useCallback(
@@ -1020,9 +1029,9 @@ function App() {
       )}
 
       <main
-        className="player-area"
-        onMouseMove={showControlsTemporarily}
-        onClick={showControlsTemporarily}
+        className={`player-area ${!cursorVisible && currentChannel && playing ? "cursor-hidden" : ""}`}
+        onMouseMove={handleMouseActivity}
+        onClick={handleMouseActivity}
       >
         {showSettings && (
           <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
