@@ -5,7 +5,7 @@ Rust + Tauri + React + hls.js.
 
 Russian version: [docs/README.ru.md](docs/README.ru.md).
 
-<img alt="Aurora Player window: playlist panel with a channel list and the player area" src="docs/screenshot.png" width="860">
+<img alt="Aurora Player window: playlist panel with a channel list and the player area" src="docs/screenshot-en.png" width="860">
 
 ## Features
 
