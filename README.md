@@ -1,56 +1,60 @@
 # ◉ Aurora Player
 
-Нативный IPTV плеер для Windows с минималистичным дизайном.  
+A native IPTV player for Windows with a minimalist interface.  
 Rust + Tauri + React + hls.js.
 
-## Возможности
+Russian version: [docs/README.ru.md](docs/README.ru.md).
 
-- **Автоопределение** — вставьте ссылку на M3U плейлист (загрузит все каналы) или на прямой поток (создаст один канал)
-- **Парсинг M3U** — извлекает название канала, логотип (tvg-logo), группу (group-title)
-- **Воспроизведение** — HLS (.m3u8) через hls.js с fallback на прямую вставку URL
-- **Группы** — фильтрация каналов по группам из плейлиста
-- **Поиск** — быстрый поиск по названиям каналов
-- **Избранное** — ★ добавляйте каналы в избранное
-- **История** — последние 20 просмотренных каналов
-- **Автосохранение** — плейлисты сохраняются в localStorage и не теряются после перезапуска
+<img alt="Aurora Player window: playlist panel with a channel list and the player area" src="docs/screenshot.png" width="860">
 
-## Установка
+## Features
 
-### Готовый бинарник
+- **Automatic detection** — paste an M3U playlist link (loads every channel) or a direct stream link (creates a single channel)
+- **M3U parsing** — pulls the channel name, logo (`tvg-logo`) and group (`group-title`) out of the playlist
+- **Playback** — HLS (`.m3u8`) through hls.js, with a fallback to inserting the URL directly
+- **Groups** — filter channels by the groups defined in the playlist
+- **Search** — quick search across channel names
+- **Favourites** — ★ add channels to favourites
+- **History** — the last 20 channels watched
+- **Autosave** — playlists are kept in localStorage and survive a restart
+
+## Installation
+
+### Prebuilt binary
 
 ```
 aurora-player\src-tauri\target\release\aurora-player.exe
 ```
 
-Или установщик:
+Or the installer:
 
 ```
 aurora-player\src-tauri\target\release\bundle\nsis\Aurora Player_0.1.0_x64-setup.exe
 ```
 
-### Сборка из исходников
+### Building from source
 
 ```bash
 cd aurora-player
 npm run tauri build
 ```
 
-### Режим разработки
+### Development mode
 
 ```bash
 npm run tauri dev
 ```
 
-## Технологии
+## Technologies
 
-| Слой | Технология |
+| Layer | Technology |
 |------|-----------|
-| Окно | Tauri 2 + WebView2 |
-| Бэкенд | Rust (reqwest, serde) |
-| Фронтенд | React 19 + TypeScript |
-| Сборка | Vite |
-| Видео | hls.js + HTML5 Video |
+| Window | Tauri 2 + WebView2 |
+| Backend | Rust (reqwest, serde) |
+| Frontend | React 19 + TypeScript |
+| Build | Vite |
+| Video | hls.js + HTML5 Video |
 
-## Лицензия
+## License
 
 MIT LICENSE
