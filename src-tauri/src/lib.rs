@@ -27,7 +27,35 @@ pub struct Playlist {
     pub name: String,
 }
 
-fn parse_m3u(content: &str, source_url: Option<&str>) -> Vec<Channel> {
+fn is_russian(lang: &str) -> bool {
+    lang == "ru"
+}
+
+fn numbered_channel_name(lang: &str, index: usize) -> String {
+    if is_russian(lang) {
+        format!("Канал {}", index)
+    } else {
+        format!("Channel {}", index)
+    }
+}
+
+fn live_name(lang: &str) -> String {
+    if is_russian(lang) {
+        "Прямой эфир".to_string()
+    } else {
+        "Live".to_string()
+    }
+}
+
+fn custom_playlist_name(lang: &str) -> String {
+    if is_russian(lang) {
+        "Пользовательский плейлист".to_string()
+    } else {
+        "Custom playlist".to_string()
+    }
+}
+
+fn parse_m3u(content: &str, source_url: Option<&str>, lang: &str) -> Vec<Channel> {
     let mut channels = Vec::new();
     let mut current_name = String::new();
     let mut current_logo: Option<String> = None;
@@ -69,7 +97,7 @@ fn parse_m3u(content: &str, source_url: Option<&str>) -> Vec<Channel> {
             } else {
                 url_index += 1;
                 channels.push(Channel {
-                    name: format!("Канал {}", url_index),
+                    name: numbered_channel_name(lang, url_index),
                     url: resolve_url(line, source_url),
                     logo: None,
                     group: current_group.clone(),
@@ -146,7 +174,7 @@ async fn check_url(url: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn detect_and_load(input: String) -> Result<Playlist, String> {
+async fn detect_and_load(input: String, lang: String) -> Result<Playlist, String> {
     let trimmed = input.trim();
 
     if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
@@ -161,7 +189,7 @@ async fn detect_and_load(input: String) -> Result<Playlist, String> {
         let text = response.text().await.map_err(|e| e.to_string())?;
 
         if text.contains("#EXTM3U") || text.contains("#EXTINF:") {
-            let channels = parse_m3u(&text, Some(trimmed));
+            let channels = parse_m3u(&text, Some(trimmed), &lang);
             let name = trimmed
                 .split('/')
                 .last()
@@ -183,11 +211,11 @@ async fn detect_and_load(input: String) -> Result<Playlist, String> {
                     logo: None,
                     group: None,
                 }],
-                name: "Прямой эфир".to_string(),
+                name: live_name(&lang),
             })
         }
     } else {
-        let channels = parse_m3u(trimmed, None);
+        let channels = parse_m3u(trimmed, None, &lang);
         if channels.is_empty() {
             Ok(Playlist {
                 channels: vec![Channel {
@@ -196,12 +224,12 @@ async fn detect_and_load(input: String) -> Result<Playlist, String> {
                     logo: None,
                     group: None,
                 }],
-                name: "Прямой эфир".to_string(),
+                name: live_name(&lang),
             })
         } else {
             Ok(Playlist {
                 channels,
-                name: "Пользовательский плейлист".to_string(),
+                name: custom_playlist_name(&lang),
             })
         }
     }
