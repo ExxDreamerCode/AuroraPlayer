@@ -17,6 +17,7 @@ Russian version: [docs/README.ru.md](docs/README.ru.md).
 - **Favourites** — ★ add channels to favourites
 - **History** — the last 20 channels watched
 - **Autosave** — playlists are kept in localStorage and survive a restart
+- **Bilingual interface** — English by default, Russian one click away in the settings
 
 ## Installation
 

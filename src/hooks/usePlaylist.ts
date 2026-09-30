@@ -1,13 +1,19 @@
-import { useState, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Playlist } from "../types";
+import type { Translator, Lang } from "../i18n";
 
 export function usePlaylist(
   savedPlaylists: Playlist[],
   savePlaylists: (p: Playlist[]) => void,
   favorites: string[],
-  saveFavorites: (f: string[]) => void
+  saveFavorites: (f: string[]) => void,
+  t: Translator,
+  lang: Lang
 ) {
+  const tRef = useRef(t);
+  tRef.current = t;
+
   const [input, setInput] = useState("");
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(false);
@@ -68,14 +74,14 @@ export function usePlaylist(
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<Playlist>("detect_and_load", { input: val });
+      const result = await invoke<Playlist>("detect_and_load", { input: val, lang });
       loadPlaylist(result);
     } catch (err) {
-      setError(`Ошибка: ${err}`);
+      setError(tRef.current("errorPrefix", { err: String(err) }));
     } finally {
       setLoading(false);
     }
-  }, [input, loadPlaylist]);
+  }, [input, loadPlaylist, lang]);
 
   const closePlaylist = useCallback(() => {
     setPlaylist(null);

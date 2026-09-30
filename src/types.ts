@@ -1,3 +1,5 @@
+import type { TranslationKey } from "./i18n";
+
 export interface Channel {
   name: string;
   url: string;
@@ -16,7 +18,7 @@ export interface Theme {
   accentSoft: string;
   accentDim: string;
   bgDeep: string;
-  label: string;
+  labelKey: TranslationKey;
 }
 
 export interface HlsLevelInfo {

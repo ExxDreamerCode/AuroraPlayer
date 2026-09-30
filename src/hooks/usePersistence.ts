@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Playlist, Channel } from "../types";
-import { STORAGE_KEY, FAVORITES_KEY, HISTORY_KEY, MAX_HISTORY, THEME_KEY, CUSTOM_COLOR_KEY } from "../utils";
+import { STORAGE_KEY, FAVORITES_KEY, HISTORY_KEY, MAX_HISTORY, THEME_KEY, CUSTOM_COLOR_KEY, LANG_KEY } from "../utils";
+import { DEFAULT_LANG } from "../i18n";
+import type { Lang } from "../i18n";
 
 export function usePersistence() {
   const [savedPlaylists, setSavedPlaylists] = useState<Playlist[]>([]);
@@ -11,6 +13,13 @@ export function usePersistence() {
   });
   const [customColor, setCustomColor] = useState<string>(() => {
     try { return localStorage.getItem(CUSTOM_COLOR_KEY) || "#0a84ff"; } catch { return "#0a84ff"; }
+  });
+  const [currentLang, setLang] = useState<Lang>(() => {
+    try {
+      const stored = localStorage.getItem(LANG_KEY);
+      if (stored === "en" || stored === "ru") return stored;
+    } catch {}
+    return DEFAULT_LANG;
   });
 
   useEffect(() => {
@@ -39,6 +48,11 @@ export function usePersistence() {
     setHistory(h);
   }, []);
 
+  const setCurrentLang = useCallback((lang: Lang) => {
+    try { localStorage.setItem(LANG_KEY, lang); } catch {}
+    setLang(lang);
+  }, []);
+
   const addToHistory = useCallback(
     (ch: Channel) => {
       const filtered = history.filter((h) => h.url !== ch.url);
@@ -58,6 +72,8 @@ export function usePersistence() {
     setCurrentTheme,
     customColor,
     setCustomColor,
+    currentLang,
+    setCurrentLang,
     savePlaylists,
     saveFavorites,
     saveHistory,

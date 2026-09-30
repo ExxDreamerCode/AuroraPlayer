@@ -4,6 +4,7 @@ export const HISTORY_KEY = "aurora-player-history";
 export const MAX_HISTORY = 20;
 export const THEME_KEY = "aurora-player-theme";
 export const CUSTOM_COLOR_KEY = "aurora-player-custom-color";
+export const LANG_KEY = "aurora-player-lang";
 
 export function formatTime(sec: number): string {
   if (!isFinite(sec) || sec < 0) return "0:00";

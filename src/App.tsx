@@ -1,9 +1,10 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import "./App.css";
 
 import { Channel } from "./types";
 import { formatTime } from "./utils";
 import { THEMES, applyTheme } from "./theme";
+import { createTranslator, channelCount, LANGS } from "./i18n";
 import {
   IconPlay,
   IconPause,
@@ -49,7 +50,11 @@ function App() {
     addToHistory,
     setCurrentTheme,
     setCustomColor,
+    currentLang,
+    setCurrentLang,
   } = usePersistence();
+
+  const t = useMemo(() => createTranslator(currentLang), [currentLang]);
 
   const {
     currentChannel,
@@ -88,7 +93,7 @@ function App() {
     handleVideoError,
     handleStalled,
     handleMouseActivity,
-  } = usePlayback(addDebug);
+  } = usePlayback(addDebug, t);
 
   const {
     input,
@@ -124,7 +129,7 @@ function App() {
     startRenaming,
     confirmRename,
     cancelRename,
-  } = usePlaylist(savedPlaylists, savePlaylists, favorites, saveFavorites);
+  } = usePlaylist(savedPlaylists, savePlaylists, favorites, saveFavorites, t, currentLang);
 
   const handlePlayChannel = useCallback(
     (ch: Channel) => {
@@ -168,7 +173,7 @@ function App() {
           <div
             className="logo"
             onClick={() => setShowSettings(!showSettings)}
-            title="Настройки"
+            title={t("settingsTitle")}
           >
             <div className="logo-icon">
               <IconLogo />
@@ -178,7 +183,7 @@ function App() {
           <button
             className="sidebar-toggle"
             onClick={() => setSidebarOpen(false)}
-            title="Скрыть панель"
+            title={t("hidePanel")}
           >
             <IconSidebarToggle open={true} />
           </button>
@@ -188,7 +193,7 @@ function App() {
           <div className="input-group">
             <input
               type="text"
-              placeholder="Ссылка или текст плейлиста..."
+              placeholder={t("playlistPlaceholder")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLoad()}
@@ -207,7 +212,7 @@ function App() {
               <button
                 className="toolbar-back"
                 onClick={closePlaylist}
-                title="Назад"
+                title={t("back")}
               >
                 <IconBack />
               </button>
@@ -221,7 +226,7 @@ function App() {
               </span>
               <input
                 type="text"
-                placeholder="Поиск..."
+                placeholder={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -237,7 +242,7 @@ function App() {
                 <button
                   className={`groups-toggle ${showGroups ? "active" : ""}`}
                   onClick={() => setShowGroups(!showGroups)}
-                  title="Категории"
+                  title={t("categories")}
                 >
                   <IconFilter />
                 </button>
@@ -248,7 +253,7 @@ function App() {
               {showGroups && (
                 <div className="group-panel">
                   <div className="group-panel-header">
-                    <span>Категории</span>
+                    <span>{t("categories")}</span>
                     <button
                       className="group-panel-close"
                       onClick={() => setShowGroups(false)}
@@ -266,7 +271,7 @@ function App() {
                           setShowFavorites(false);
                         }}
                       >
-                        {g === "all" ? "Все" : g}
+                        {g === "all" ? t("all") : g}
                       </button>
                     ))}
                   </div>
@@ -281,8 +286,8 @@ function App() {
                   >
                     <IconStar filled={showFavorites} />
                     {showFavorites
-                      ? "Все каналы"
-                      : `Избранное · ${favorites.length}`}
+                      ? t("allChannels")
+                      : `${t("favorites")} · ${favorites.length}`}
                   </button>
                 )}
 
@@ -296,7 +301,7 @@ function App() {
                         fontSize: 13,
                       }}
                     >
-                      {search ? "Ничего не найдено" : "Нет каналов"}
+                      {search ? t("nothingFound") : t("noChannels")}
                     </div>
                   )}
                   {filteredChannels.map((ch, i) => (
@@ -347,7 +352,7 @@ function App() {
           <>
             {savedPlaylists.length > 0 ? (
               <div className="playlist-list">
-                <div className="playlist-list-header">Мои плейлисты</div>
+                <div className="playlist-list-header">{t("myPlaylists")}</div>
                 {savedPlaylists.map((p, i) => (
                   <div
                     key={i}
@@ -376,7 +381,7 @@ function App() {
                         <div className="playlist-list-name">{p.name}</div>
                       )}
                       <div className="playlist-list-count">
-                        {p.channels.length} каналов
+                        {channelCount(currentLang, p.channels.length)}
                       </div>
                     </div>
                     <button
@@ -385,7 +390,7 @@ function App() {
                         e.stopPropagation();
                         startRenaming(p.name);
                       }}
-                      title="Переименовать"
+                      title={t("rename")}
                     >
                       <IconEdit />
                     </button>
@@ -406,16 +411,16 @@ function App() {
                 <div className="empty-saved-icon">
                   <IconFolder />
                 </div>
-                <p>Нет сохранённых плейлистов</p>
+                <p>{t("noSavedPlaylists")}</p>
                 <p className="empty-saved-hint">
-                  Вставьте ссылку выше — сохранится автоматически
+                  {t("saveHint")}
                 </p>
               </div>
             )}
 
             {history.length > 0 && (
               <div className="history-section">
-                <div className="history-header">Недавние</div>
+                <div className="history-header">{t("recent")}</div>
                 {history.slice(0, 10).map((ch, i) => (
                   <div
                     key={i}
@@ -435,7 +440,7 @@ function App() {
         <button
           className="sidebar-reveal"
           onClick={() => setSidebarOpen(true)}
-          title="Показать панель"
+          title={t("showPanel")}
         >
           <IconSidebarToggle open={false} />
         </button>
@@ -451,16 +456,16 @@ function App() {
             className="settings-panel"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="settings-header">Тема оформления</div>
+            <div className="settings-header">{t("appearance")}</div>
             <div className="settings-themes">
-              {THEMES.map((t) => (
+              {THEMES.map((theme) => (
                 <button
-                  key={t.name}
-                  className={`theme-btn ${currentTheme === t.name ? "active" : ""}`}
+                  key={theme.name}
+                  className={`theme-btn ${currentTheme === theme.name ? "active" : ""}`}
                   onClick={() =>
                     applyTheme(
-                      t.name,
-                      t.name === "custom" ? customColor : undefined,
+                      theme.name,
+                      theme.name === "custom" ? customColor : undefined,
                       setCurrentTheme,
                       setCustomColor
                     )
@@ -470,10 +475,10 @@ function App() {
                     className="theme-swatch"
                     style={{
                       background:
-                        t.name === "custom" ? customColor : t.accent,
+                        theme.name === "custom" ? customColor : theme.accent,
                     }}
                   />
-                  <span className="theme-label">{t.label}</span>
+                  <span className="theme-label">{t(theme.labelKey)}</span>
                 </button>
               ))}
               {currentTheme === "custom" && (
@@ -495,6 +500,19 @@ function App() {
                   <span className="color-hex">{customColor}</span>
                 </div>
               )}
+            </div>
+
+            <div className="settings-header">{t("language")}</div>
+            <div className="settings-themes">
+              {LANGS.map((l) => (
+                <button
+                  key={l.code}
+                  className={`theme-btn ${currentLang === l.code ? "active" : ""}`}
+                  onClick={() => setCurrentLang(l.code)}
+                >
+                  <span className="theme-label">{l.label}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -523,7 +541,7 @@ function App() {
                   )}
                 </div>
                 <div className="channel-meta">
-                  <div className="playing-label">Сейчас</div>
+                  <div className="playing-label">{t("nowPlaying")}</div>
                   <div className="playing-name">{currentChannel.name}</div>
                 </div>
               </div>
@@ -535,7 +553,7 @@ function App() {
                     e.stopPropagation();
                     setShowDebug(!showDebug);
                   }}
-                  title="Отладка"
+                  title={t("debug")}
                 >
                   <IconBug />
                 </button>
@@ -580,7 +598,7 @@ function App() {
                 className="debug-panel"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="debug-header">Отладка</div>
+                <div className="debug-header">{t("debug")}</div>
                 <div className="debug-logs">
                   {debugLog.map((entry, i) => (
                     <div key={i} className="debug-entry">
@@ -597,11 +615,11 @@ function App() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="channel-info-header">
-                  Информация о канале
+                  {t("channelInfo")}
                 </div>
                 <div className="channel-info-body">
                   <div className="channel-info-row">
-                    <span className="channel-info-label">Название</span>
+                    <span className="channel-info-label">{t("labelName")}</span>
                     <span className="channel-info-value">
                       {currentChannel.name}
                     </span>
@@ -614,7 +632,7 @@ function App() {
                   </div>
                   {currentChannel.group && (
                     <div className="channel-info-row">
-                      <span className="channel-info-label">Группа</span>
+                      <span className="channel-info-label">{t("labelGroup")}</span>
                       <span className="channel-info-value">
                         {currentChannel.group}
                       </span>
@@ -622,7 +640,7 @@ function App() {
                   )}
                   {currentChannel.logo && (
                     <div className="channel-info-row">
-                      <span className="channel-info-label">Логотип</span>
+                      <span className="channel-info-label">{t("labelLogo")}</span>
                       <span className="channel-info-value channel-info-url">
                         {currentChannel.logo}
                       </span>
@@ -630,7 +648,7 @@ function App() {
                   )}
                   {videoMeta && (
                     <div className="channel-info-row">
-                      <span className="channel-info-label">Разрешение</span>
+                      <span className="channel-info-label">{t("labelResolution")}</span>
                       <span className="channel-info-value">
                         {videoMeta.videoWidth}×{videoMeta.videoHeight}
                       </span>
@@ -639,7 +657,7 @@ function App() {
                   {currentLevel && (
                     <div className="channel-info-row">
                       <span className="channel-info-label">
-                        Текущий уровень
+                        {t("labelCurrentLevel")}
                       </span>
                       <span className="channel-info-value">
                         {currentLevel.height}p /{" "}
@@ -650,7 +668,7 @@ function App() {
                   {hlsLevels.length > 0 && (
                     <div className="channel-info-section">
                       <div className="channel-info-label">
-                        Доступные уровни HLS
+                        {t("labelHlsLevels")}
                       </div>
                       {hlsLevels.map((l, i) => (
                         <div key={i} className="channel-info-level">
@@ -692,7 +710,7 @@ function App() {
                       e.stopPropagation();
                       goToPrevChannel();
                     }}
-                    title="Предыдущий"
+                    title={t("previous")}
                   >
                     <IconPrev />
                   </button>
@@ -711,7 +729,7 @@ function App() {
                       e.stopPropagation();
                       goToNextChannel();
                     }}
-                    title="Следующий"
+                    title={t("next")}
                   >
                     <IconNext />
                   </button>
@@ -737,7 +755,7 @@ function App() {
                       e.stopPropagation();
                       setShowChannelInfo(!showChannelInfo);
                     }}
-                    title="Информация о канале"
+                    title={t("channelInfo")}
                   >
                     <IconInfo />
                   </button>
@@ -752,7 +770,7 @@ function App() {
                       e.stopPropagation();
                       handlePictureInPicture();
                     }}
-                    title={isPip ? "Выйти из PiP" : "Картинка в картинке"}
+                    title={isPip ? t("exitPip") : t("enterPip")}
                   >
                     {isPip ? (
                       <IconPictureInPictureExit />
@@ -782,7 +800,7 @@ function App() {
               </div>
               <h1 className="hero-title">Aurora Player</h1>
               <p className="hero-desc">
-                Вставьте ссылку на M3U плейлист или прямой поток
+                {t("heroDesc")}
               </p>
               <div className="hero-input">
                 <input
@@ -793,7 +811,7 @@ function App() {
                   onKeyDown={(e) => e.key === "Enter" && handleLoad()}
                 />
                 <button onClick={handleLoad} disabled={loading}>
-                  {loading ? "Загрузка..." : "Смотреть"}
+                  {loading ? t("loading") : t("watch")}
                 </button>
               </div>
             </div>

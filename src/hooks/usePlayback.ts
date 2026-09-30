@@ -3,8 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 import Hls from "hls.js";
 import { Channel, HlsLevelInfo, CurrentLevelInfo, VideoMeta } from "../types";
 import { withTimeout } from "../utils";
+import type { Translator } from "../i18n";
 
-export function usePlayback(addDebug: (msg: string) => void) {
+export function usePlayback(addDebug: (msg: string) => void, t: Translator) {
+  const tRef = useRef(t);
+  tRef.current = t;
+
   const [currentChannel, setCurrentChannel] = useState<Channel | null>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -111,7 +115,7 @@ export function usePlayback(addDebug: (msg: string) => void) {
         firstPlaySucceededRef.current = true;
         const ch = currentChannelRef.current;
         if (ch) {
-          addDebug("🧊 Холодный старт: авто-перезапуск канала");
+          addDebug(tRef.current("debugColdStart"));
           playChannelRef.current(ch);
         }
       }
@@ -123,10 +127,10 @@ export function usePlayback(addDebug: (msg: string) => void) {
       armColdStartWatchdog();
       v.play().catch((err: any) => {
         if (err?.name === "AbortError") {
-          addDebug("🔁 play() прерван (AbortError) — повтор");
+          addDebug(tRef.current("debugPlayAborted"));
           setTimeout(() => {
             v.play().catch((err2: any) => {
-              addDebug(`❌ Play (повтор не удался): ${err2?.message || err2}`);
+              addDebug(tRef.current("debugPlayRetryFailed", { err: err2?.message || err2 }));
               onFail?.(err2);
             });
           }, 250);
@@ -141,7 +145,7 @@ export function usePlayback(addDebug: (msg: string) => void) {
 
   const playChannel = useCallback(
     async (channel: Channel, addToHistory?: (ch: Channel) => void) => {
-      addDebug(`▶ Канал: ${channel.name}`);
+      addDebug(tRef.current("debugChannel", { name: channel.name }));
       addDebug(`📎 URL: ${channel.url}`);
       stopPlayback();
       clearBufferingTimer();
@@ -172,22 +176,22 @@ export function usePlayback(addDebug: (msg: string) => void) {
           const elapsed = parts[2];
           const kind = parts[3];
           let errorMsg = "";
-          if (kind === "connection_refused") errorMsg = "Сервер не отвечает";
-          else if (kind === "timeout") errorMsg = "Сервер не отвечает (timeout)";
-          else if (status === "404") errorMsg = "Канал не найден (404)";
-          else if (status === "403") errorMsg = "Доступ запрещён (403)";
-          else errorMsg = `Канал недоступен (${kind})`;
+          if (kind === "connection_refused") errorMsg = tRef.current("serverNotResponding");
+          else if (kind === "timeout") errorMsg = tRef.current("serverTimeout");
+          else if (status === "404") errorMsg = tRef.current("notFound404");
+          else if (status === "403") errorMsg = tRef.current("denied403");
+          else errorMsg = tRef.current("channelUnavailableKind", { kind });
           addDebug(`❌ ${errorMsg} (${elapsed}ms)`);
           setError(errorMsg);
           setBuffering(false);
           return;
         }
-        addDebug("✅ URL доступен");
+        addDebug(tRef.current("debugUrlOk"));
       } catch (err: any) {
         if (err?.message === "timeout_client") {
-          addDebug("⏱️ Проверка URL не ответила за 3с — продолжаем без неё");
+          addDebug(tRef.current("debugUrlTimeout"));
         } else {
-          addDebug(`⚠️ Проверка URL: ${err}`);
+          addDebug(tRef.current("debugUrlError", { err: String(err) }));
         }
       }
 
@@ -198,11 +202,11 @@ export function usePlayback(addDebug: (msg: string) => void) {
         channel.url.startsWith("udp://") || channel.url.startsWith("rtp://");
 
       if (!isHls || isRtsp || isUdp) {
-        addDebug("📡 Прямой поток");
+        addDebug(tRef.current("debugDirectStream"));
         v.src = channel.url;
         setTimeout(() => {
           safePlay(v, (err) => {
-            setError(`Ошибка: ${err?.message || "неизвестная ошибка"}`);
+            setError(tRef.current("errorPrefix", { err: err?.message || tRef.current("unknownError") }));
             setBuffering(false);
           });
         }, 200);
@@ -210,32 +214,32 @@ export function usePlayback(addDebug: (msg: string) => void) {
       }
 
       if (!Hls.isSupported()) {
-        addDebug("⚠️ hls.js не поддерживается");
+        addDebug(tRef.current("debugHlsUnsupported"));
         v.src = channel.url;
         setTimeout(() => {
           safePlay(v, (err) => {
-            setError(`Ошибка: ${err?.message || "ошибка"}`);
+            setError(tRef.current("errorPrefix", { err: err?.message || tRef.current("plainError") }));
             setBuffering(false);
           });
         }, 200);
         return;
       }
 
-      addDebug("🎬 Запуск hls.js");
+      addDebug(tRef.current("debugHlsStart"));
 
       manifestTimeoutRef.current = setTimeout(() => {
-        addDebug("⏰ Таймаут манифеста");
+        addDebug(tRef.current("debugManifestTimeout"));
         if (hlsRef.current) {
           try {
             hlsRef.current.destroy();
           } catch {}
           hlsRef.current = null;
         }
-        addDebug("🔄 Fallback на прямой src");
+        addDebug(tRef.current("debugFallback"));
         v.src = channel.url;
         safePlay(v, (err) => {
           addDebug(`❌ Fallback: ${err?.message || err}`);
-          setError("Канал недоступен");
+          setError(tRef.current("channelUnavailable"));
           setBuffering(false);
         });
       }, 10000);
@@ -272,7 +276,7 @@ export function usePlayback(addDebug: (msg: string) => void) {
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         clearManifestTimeout();
         if (hls.levels.length > 0) {
-          addDebug(`📋 Манифест, уровней: ${hls.levels.length}`);
+          addDebug(tRef.current("debugManifestLevels", { n: hls.levels.length }));
           const levels = hls.levels.map((l) => ({
             height: l.height,
             width: l.width,
@@ -282,11 +286,11 @@ export function usePlayback(addDebug: (msg: string) => void) {
           setHlsLevels(levels);
           hls.nextLevel = hls.levels.length - 1;
         } else {
-          addDebug("📋 Манифест (без уровней)");
+          addDebug(tRef.current("debugManifestNoLevels"));
           setHlsLevels([]);
         }
         safePlay(v, () => {
-          setError("Не удалось запустить воспроизведение");
+          setError(tRef.current("playbackStartFailed"));
           setBuffering(false);
         });
       });
@@ -307,7 +311,7 @@ export function usePlayback(addDebug: (msg: string) => void) {
 
       hls.on(Hls.Events.FRAG_BUFFERED, () => {
         if (buffering) {
-          addDebug("✅ Данные получены");
+          addDebug(tRef.current("debugDataReceived"));
           setBuffering(false);
           clearBufferingTimer();
         }
@@ -335,7 +339,7 @@ export function usePlayback(addDebug: (msg: string) => void) {
               v.src = channel.url;
               safePlay(v, (err) => {
                 addDebug(`❌ Fallback: ${err?.message || err}`);
-                setError("Канал недоступен");
+                setError(tRef.current("channelUnavailable"));
                 setBuffering(false);
               });
           }
@@ -444,7 +448,7 @@ export function usePlayback(addDebug: (msg: string) => void) {
   }, []);
 
   const handleVideoPlay = useCallback(() => {
-    addDebug("▶ Воспроизведение");
+    addDebug(tRef.current("debugPlaying"));
     setPlaying(true);
     setError(null);
     const v = videoRef.current;
@@ -456,12 +460,12 @@ export function usePlayback(addDebug: (msg: string) => void) {
   }, []);
 
   const handleWaiting = useCallback(() => {
-    addDebug("⏳ Буферизация");
+    addDebug(tRef.current("debugBuffering"));
     setBuffering(true);
     clearBufferingTimer();
     bufferingTimerRef.current = setTimeout(() => {
-      addDebug("⏰ Таймаут буферизации");
-      setError("Таймаут — поток не отвечает");
+      addDebug(tRef.current("debugBufferTimeout"));
+      setError(tRef.current("streamTimeout"));
       setBuffering(false);
       stopPlayback();
     }, 30000);
@@ -485,8 +489,8 @@ export function usePlayback(addDebug: (msg: string) => void) {
   ]);
 
   const handleVideoError = useCallback(() => {
-    addDebug("❌ Ошибка видео");
-    setError("Ошибка воспроизведения");
+    addDebug(tRef.current("debugVideoError"));
+    setError(tRef.current("playbackFailed"));
     setPlaying(false);
     setBuffering(false);
     clearBufferingTimer();
@@ -501,7 +505,7 @@ export function usePlayback(addDebug: (msg: string) => void) {
     stallRecoveryRef.current = setTimeout(() => {
       const v = videoRef.current;
       if (v && !v.paused && buffering) {
-        addDebug("🔄 Восстановление");
+        addDebug(tRef.current("debugRecovering"));
         v.play().catch(() => {});
       }
     }, 5000);

@@ -2,12 +2,12 @@ import { Theme } from "./types";
 import { THEME_KEY, CUSTOM_COLOR_KEY } from "./utils";
 
 export const THEMES: Theme[] = [
-  { name: "default", accent: "#0a84ff", accentSoft: "rgba(10, 132, 255, 0.35)", accentDim: "rgba(10, 132, 255, 0.14)", bgDeep: "#060608", label: "Синяя" },
-  { name: "purple", accent: "#a855f7", accentSoft: "rgba(168, 85, 247, 0.35)", accentDim: "rgba(168, 85, 247, 0.14)", bgDeep: "#0a0a12", label: "Фиолетовая" },
-  { name: "green", accent: "#22c55e", accentSoft: "rgba(34, 197, 94, 0.35)", accentDim: "rgba(34, 197, 94, 0.14)", bgDeep: "#060a08", label: "Зелёная" },
-  { name: "orange", accent: "#f97316", accentSoft: "rgba(249, 115, 22, 0.35)", accentDim: "rgba(249, 115, 22, 0.14)", bgDeep: "#0a0806", label: "Оранжевая" },
-  { name: "pink", accent: "#ec4899", accentSoft: "rgba(236, 72, 153, 0.35)", accentDim: "rgba(236, 72, 153, 0.14)", bgDeep: "#0a0608", label: "Розовая" },
-  { name: "custom", accent: "#0a84ff", accentSoft: "rgba(10, 132, 255, 0.35)", accentDim: "rgba(10, 132, 255, 0.14)", bgDeep: "#060608", label: "Свой цвет" },
+  { name: "default", accent: "#0a84ff", accentSoft: "rgba(10, 132, 255, 0.35)", accentDim: "rgba(10, 132, 255, 0.14)", bgDeep: "#060608", labelKey: "themeDefault" },
+  { name: "purple", accent: "#a855f7", accentSoft: "rgba(168, 85, 247, 0.35)", accentDim: "rgba(168, 85, 247, 0.14)", bgDeep: "#0a0a12", labelKey: "themePurple" },
+  { name: "green", accent: "#22c55e", accentSoft: "rgba(34, 197, 94, 0.35)", accentDim: "rgba(34, 197, 94, 0.14)", bgDeep: "#060a08", labelKey: "themeGreen" },
+  { name: "orange", accent: "#f97316", accentSoft: "rgba(249, 115, 22, 0.35)", accentDim: "rgba(249, 115, 22, 0.14)", bgDeep: "#0a0806", labelKey: "themeOrange" },
+  { name: "pink", accent: "#ec4899", accentSoft: "rgba(236, 72, 153, 0.35)", accentDim: "rgba(236, 72, 153, 0.14)", bgDeep: "#0a0608", labelKey: "themePink" },
+  { name: "custom", accent: "#0a84ff", accentSoft: "rgba(10, 132, 255, 0.35)", accentDim: "rgba(10, 132, 255, 0.14)", bgDeep: "#060608", labelKey: "themeCustom" },
 ];
 
 export function applyTheme(
